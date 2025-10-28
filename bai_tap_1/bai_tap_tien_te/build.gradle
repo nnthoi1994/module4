@@ -3,7 +3,7 @@ plugins {
     id 'war'
 }
 
-group 'org.example'
+group 'com.example'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -19,7 +19,6 @@ targetCompatibility = '17'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
-    options.compilerArgs.add('-parameters')
 }
 
 dependencies {
