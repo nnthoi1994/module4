@@ -2,46 +2,49 @@ package org.example.demo2.controller;
 
 
 import org.example.demo2.entity.EmailSettings;
+import org.example.demo2.service.IEmailSettingsService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.Arrays;
-import java.util.List;
 
 @Controller
 public class SettingsController {
 
-    // Giả lập database: lưu trữ cấu hình hiện tại
-    private static EmailSettings currentSettings = new EmailSettings("English", 25, true, "Thor\nKing, Asgard");
+    @Autowired
+    private IEmailSettingsService emailSettingsService;
 
     @GetMapping("/settings")
-    public ModelAndView showSettingsForm() {
-        ModelAndView modelAndView = new ModelAndView("settings");
+    public String showSettingsForm(Model model) {
 
-        // Dữ liệu cho các dropdown list
-        List<String> languages = Arrays.asList("English", "Vietnamese", "Japanese", "Chinese");
-        List<Integer> pageSizes = Arrays.asList(5, 10, 15, 25, 50, 100);
+        model.addAttribute("settings", emailSettingsService.getSettings());
+        model.addAttribute("languages", emailSettingsService.getAllLanguages());
+        model.addAttribute("pageSizes", emailSettingsService.getAllPageSizes());
 
-        // Đưa dữ liệu vào model để view có thể truy cập
-        modelAndView.addObject("settings", currentSettings);
-        modelAndView.addObject("languages", languages);
-        modelAndView.addObject("pageSizes", pageSizes);
 
-        return modelAndView;
+        return "settings";
     }
 
     @PostMapping("/update-settings")
-    public ModelAndView updateSettings(@ModelAttribute("settings") EmailSettings updatedSettings) {
-        // Cập nhật cấu hình hiện tại từ dữ liệu form gửi lên
-        currentSettings = updatedSettings;
+    public String updateSettings(@ModelAttribute("settings") EmailSettings updatedSettings, RedirectAttributes redirectAttributes) {
 
-        ModelAndView modelAndView = new ModelAndView("result");
-        modelAndView.addObject("message", "Settings updated successfully!");
-        modelAndView.addObject("updatedSettings", currentSettings);
+        emailSettingsService.save(updatedSettings);
 
-        return modelAndView;
+
+        redirectAttributes.addFlashAttribute("message", "Settings updated successfully!");
+
+
+        return "redirect:/result";
+    }
+
+    @GetMapping("/result")
+    public String showResult(Model model) {
+
+        model.addAttribute("updatedSettings", emailSettingsService.getSettings());
+        return "result";
     }
 }
