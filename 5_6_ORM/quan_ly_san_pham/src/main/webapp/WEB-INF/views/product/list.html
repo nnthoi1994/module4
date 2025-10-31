@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách sản phẩm</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4" th:data-base="@{/products}">
+
+<h2 class="mb-4">Danh sách sản phẩm</h2>
+<div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <span th:text="${successMessage}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<form th:action="@{/products}" method="get" class="mb-3 d-flex" style="gap:10px;">
+    <input type="text" name="keyword" th:value="${keyword}" placeholder="Tìm theo tên" class="form-control w-25">
+    <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+    <a th:href="@{/products/create}" class="btn btn-success">+ Thêm mới</a>
+</form>
+
+<table class="table table-bordered table-striped align-middle">
+    <thead class="table-dark">
+    <tr>
+        <th>STT</th>
+        <th>Tên</th>
+        <th>Giá</th>
+        <th>Nhà sản xuất</th>
+        <th>Mô tả</th>
+        <th>Hành động</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:if="${#lists.isEmpty(products)}">
+        <td colspan="5" class="text-center text-muted">Không có sản phẩm nào.</td>
+    </tr>
+    <tr th:each="product, stat : ${products}">
+        <td th:text="${stat.count}"></td>
+        <td th:text="${product.name}"></td>
+        <td th:text="${#strings.replace(#numbers.formatDecimal(product.price, 0, 'COMMA', 3, 'POINT'), '.000', '') + ' ₫'}"></td>
+        <td th:text="${product.manufacturer}"></td>
+        <td th:text="${product.description}"></td>
+        <td>
+            <a th:href="@{/products/edit/{id}(id=${product.id})}" class="btn btn-sm btn-warning">Sửa</a>
+            <button type="button"
+                    class="btn btn-sm btn-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#deleteModal"
+                    th:attr="data-id=${product.id}, data-name=${product.name}">
+                Xóa
+            </button>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Xác nhận xóa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc muốn xóa sản phẩm <strong id="productName"></strong> không?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <a id="confirmDeleteBtn" href="#" class="btn btn-danger">Xóa</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const deleteModal = document.getElementById('deleteModal');
+    deleteModal.addEventListener('show.bs.modal', event => {
+        const button = event.relatedTarget;
+        const id = button.getAttribute('data-id');
+        const name = button.getAttribute('data-name');
+
+        document.getElementById('productName').textContent = name;
+
+        const base = document.body.getAttribute('data-base');
+        const deleteLink = document.getElementById('confirmDeleteBtn');
+        deleteLink.setAttribute('href', base + '/delete/' + id);
+    });
+</script>
+<script>
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }
+    }, 3000);
+</script>
+
+</body>
+</html>
