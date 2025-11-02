@@ -1,0 +1,55 @@
+plugins {
+    id 'java'
+    id 'war'
+}
+
+group 'com.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    junitVersion = '5.10.2'
+}
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+dependencies {
+    compileOnly('jakarta.servlet:jakarta.servlet-api:5.0.0')
+    // Spring MVC
+    implementation "org.springframework:spring-webmvc:6.2.10"
+
+    // Thymeleaf 6 + Spring integration
+    implementation "org.thymeleaf:thymeleaf-spring6:3.1.2.RELEASE"
+
+    // JPA, Hibernate
+    implementation 'org.hibernate.orm:hibernate-core:6.4.4.Final'
+    implementation 'org.springframework.data:spring-data-jpa:3.3.0'
+
+    // MySQL Connector
+    implementation 'mysql:mysql-connector-java:8.0.28'
+
+    // Jakarta Mail API for sending email
+    implementation 'jakarta.mail:jakarta.mail-api:2.1.2'
+    implementation 'com.sun.mail:jakarta.mail:2.0.1'
+
+    // For file uploads
+    implementation 'commons-fileupload:commons-fileupload:1.5'
+    implementation 'commons-io:commons-io:2.11.0'
+
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
+
+test {
+    useJUnitPlatform()
+}
