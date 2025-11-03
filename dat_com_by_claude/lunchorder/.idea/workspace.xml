@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6e32975f-8d4e-43de-bb0f-b6ae0d4f0fc7" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/config/ApplicationConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/config/WebAppInitializer.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/config/WebConfig.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/AdminController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/AuthController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/DishController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/HistoryController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/HomeController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/MenuController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/OrderController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/interceptor/AuthInterceptor.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/Dish.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/MenuImage.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/Order.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/OrderItem.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/OrderSetting.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/User.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/DishRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/MenuImageRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/OrderItemRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/OrderRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/OrderSettingRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/UserRepository.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/DishService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/EmailService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/MenuImageService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/OrderService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/OrderSettingService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/UserService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/resources/application.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/history-all.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/history-personal.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/home.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/login.html" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/register.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../5_6_ORM/du_an_dat_com/src/main/java/com/example/quan_ly_san_pham/cofig/AppConfiguration.java" beforeDir="false" afterPath="$PROJECT_DIR$/../../5_6_ORM/du_an_dat_com/src/main/java/com/example/quan_ly_san_pham/cofig/AppConfiguration.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;nnthoi1994&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/nnthoi1994/module4.git&quot;,
+    &quot;accountId&quot;: &quot;d409127c-631e-4a3b-b215-f7fd2b4df104&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="34vdMk7JYr7D71sUBTBvpybPlJ2" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager">
+    <configuration name="Tomcat 10.1.46" type="#com.intellij.j2ee.web.tomcat.TomcatRunConfigurationFactory" factoryName="Local" APPLICATION_SERVER_NAME="Tomcat 10.1.46" ALTERNATIVE_JRE_ENABLED="false">
+      <deployment>
+        <artifact name="Gradle : com.example : lunchorder-1.0-SNAPSHOT.war">
+          <settings>
+            <option name="CONTEXT_PATH" value="/Gradle___com_example___lunchorder_1_0_SNAPSHOT_war" />
+          </settings>
+        </artifact>
+      </deployment>
+      <server-settings />
+      <predefined_log_file enabled="true" id="Tomcat" />
+      <predefined_log_file enabled="true" id="Tomcat Catalina" />
+      <predefined_log_file id="Tomcat Manager" />
+      <predefined_log_file id="Tomcat Host Manager" />
+      <predefined_log_file id="Tomcat Localhost Access" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+        <option name="BuildArtifacts" enabled="true">
+          <artifact name="Gradle : com.example : lunchorder-1.0-SNAPSHOT.war" />
+        </option>
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.26199.169" />
+        <option value="bundled-js-predefined-d6986cc7102b-9c94529fcfe0-JavaScript-IU-252.26199.169" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6e32975f-8d4e-43de-bb0f-b6ae0d4f0fc7" name="Changes" comment="" />
+      <created>1762097944606</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762097944606</updated>
+      <workItem from="1762097947443" duration="357000" />
+      <workItem from="1762102921213" duration="15000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

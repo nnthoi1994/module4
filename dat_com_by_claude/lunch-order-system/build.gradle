@@ -1,0 +1,61 @@
+plugins {
+    id 'java'
+    id 'war'
+}
+
+group = 'com.lunchorder'
+version = '1.0-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Framework
+    implementation 'org.springframework:spring-webmvc:6.1.4'
+    implementation 'org.springframework:spring-orm:6.1.4'
+    implementation 'org.springframework:spring-context:6.1.4'
+    implementation 'org.springframework:spring-context-support:6.1.4'
+
+    // Spring Data JPA
+    implementation 'org.springframework.data:spring-data-jpa:3.2.3'
+
+    // Hibernate
+    implementation 'org.hibernate.orm:hibernate-core:6.4.4.Final'
+
+    // MySQL
+    implementation 'com.mysql:mysql-connector-j:8.3.0'
+
+    // Connection Pool
+    implementation 'com.zaxxer:HikariCP:5.1.0'
+
+    // Thymeleaf
+    implementation 'org.thymeleaf:thymeleaf-spring6:3.1.2.RELEASE'
+
+    // Servlet API
+    compileOnly 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+
+    // Validation
+    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+    // Email - Jakarta Mail API
+    implementation 'com.sun.mail:jakarta.mail:2.0.1'
+    implementation 'jakarta.mail:jakarta.mail-api:2.1.2'
+
+    // Password Encryption
+    implementation 'org.mindrot:jbcrypt:0.4'
+
+    // Lombok (optional)
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
+}
+
+war {
+    archiveFileName = 'lunch-order.war'
+}

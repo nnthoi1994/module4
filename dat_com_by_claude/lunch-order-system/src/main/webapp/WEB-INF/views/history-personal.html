@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử cá nhân - Hệ thống Đặt Cơm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .order-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .order-date {
+            color: #667eea;
+        }
+        .order-total {
+            color: #28a745;
+        }
+        .order-items {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+        .order-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .order-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div>
+        <h1>📋 Lịch Sử Đặt Cơm Của Tôi</h1>
+    </div>
+</div>
+
+<div class="nav-links">
+    <a href="/">🏠 Trang chủ</a>
+    <a href="/history/personal">📋 Lịch sử của tôi</a>
+    <a href="/history/all">📊 Lịch sử chung</a>
+</div>
+
+<div class="section">
+    <h2>Các đơn hàng đã đặt</h2>
+
+    <div th:if="${#lists.isEmpty(orders)}">
+        <p style="color: #888; font-style: italic;">Chưa có đơn hàng nào</p>
+    </div>
+
+    <div th:each="order : ${orders}" class="order-card">
+        <div class="order-header">
+            <span class="order-date" th:text="'📅 ' + ${#temporals.format(order.orderDate, 'dd/MM/yyyy')}"></span>
+            <span class="order-total" th:text="'💰 ' + ${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"></span>
+        </div>
+
+        <div class="order-items">
+            <div th:each="item : ${order.items}" class="order-item">
+                <strong th:text="${item.dish.name}"></strong> -
+                Số lượng: <span th:text="${item.quantity}"></span> -
+                Giá: <span th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"></span> -
+                Tổng: <span th:text="${#numbers.formatDecimal(item.subtotal, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"></span>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

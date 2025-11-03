@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử chung - Hệ thống Đặt Cơm</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        .date-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .user-order {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .user-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .order-items {
+            padding-left: 20px;
+            font-size: 14px;
+        }
+        .order-item {
+            padding: 3px 0;
+        }
+        .order-total {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .day-total {
+            text-align: right;
+            font-size: 18px;
+            font-weight: bold;
+            color: #28a745;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>📊 Lịch Sử Đặt Cơm Chung</h1>
+</div>
+
+<div class="nav-links">
+    <a href="/">🏠 Trang chủ</a>
+    <a href="/history/personal">📋 Lịch sử của tôi</a>
+    <a href="/history/all">📊 Lịch sử chung</a>
+</div>
+
+<div class="section">
+    <h2>Lịch sử theo ngày</h2>
+
+    <div th:if="${#maps.isEmpty(orderHistory)}">
+        <p style="color: #888; font-style: italic;">Chưa có lịch sử</p>
+    </div>
+
+    <div th:each="entry : ${orderHistory}" class="date-section">
+        <h3 th:text="'📅 ' + ${#temporals.format(entry.key, 'dd/MM/yyyy')}"></h3>
+
+        <div th:each="order : ${entry.value}" class="user-order">
+            <div class="user-name" th:text="'👤 ' + ${order.user.fullName}"></div>
+
+            <div class="order-items">
+                <div th:each="item : ${order.items}" class="order-item">
+                    • <span th:text="${item.dish.name}"></span>
+                    x<span th:text="${item.quantity}"></span> =
+                    <span th:text="${#numbers.formatDecimal(item.subtotal, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"></span>
+                </div>
+            </div>
+
+            <div class="order-total">
+                Tổng: <span th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"></span>
+            </div>
+        </div>
+
+        <div class="day-total">
+            Tổng cộng ngày:
+            <span th:text="${#numbers.formatDecimal(#aggregates.sum(entry.value.![totalAmount]), 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"></span>
+        </div>
+    </div>
+</div>
+</body>
+</html>
