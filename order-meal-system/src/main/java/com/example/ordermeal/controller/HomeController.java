@@ -1,9 +1,9 @@
-package com.example.quan_ly_san_pham.controller;
+package com.example.ordermeal.controller;
 
-import com.example.quan_ly_san_pham.entity.*;
-import com.example.quan_ly_san_pham.service.*;
+import com.example.ordermeal.entity.*;
+import com.example.ordermeal.service.*;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -12,19 +12,18 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/")
+@RequiredArgsConstructor
 public class HomeController {
-
-    @Autowired private IUserService userService;
-    @Autowired private ImageService imageService;
-    @Autowired private DishService dishService;
-    @Autowired private OrderService orderService;
-    @Autowired private AppStateService appStateService;
+    private final IUserService userService;
+    private final ImageService imageService;
+    private final DishService dishService;
+    private final OrderService orderService;
+    private final AppStateService appStateService;
 
     @ModelAttribute
     public void addUserToModel(Model model, HttpSession session) {
@@ -41,34 +40,47 @@ public class HomeController {
             return "redirect:/login";
         }
 
+        // Add basic data
         model.addAttribute("todaysImages", imageService.getTodaysImages());
         model.addAttribute("dishes", dishService.findAll());
-
-        List<Order> todaysCompletedOrders = orderService.getTodaysCompletedOrders();
-        model.addAttribute("todaysCompletedOrders", todaysCompletedOrders);
         model.addAttribute("isOrderingLocked", appStateService.isOrderingLocked());
 
+        // Get cart
         Order cart = orderService.getOrCreateCart(loggedInUser);
         model.addAttribute("cart", cart);
 
-        // === FIX: Xử lý logic tổng hợp ở đây thay vì trong template ===
+        // Get today's completed orders
+        List<Order> todaysCompletedOrders = orderService.getTodaysCompletedOrders();
+        model.addAttribute("todaysCompletedOrders", todaysCompletedOrders);
 
-        // Lấy tất cả items từ các orders đã hoàn tất
-        List<OrderItem> allItems = todaysCompletedOrders.stream()
-                .flatMap(order -> order.getItems().stream())
-                .collect(Collectors.toList());
+        // Process summary data only if there are completed orders
+        if (todaysCompletedOrders != null && !todaysCompletedOrders.isEmpty()) {
+            List<OrderItem> allItems = todaysCompletedOrders.stream()
+                    .filter(order -> order.getItems() != null)
+                    .flatMap(order -> order.getItems().stream())
+                    .collect(Collectors.toList());
 
-        // Nhóm các items theo tên món ăn
-        Map<String, List<OrderItem>> groupedItems = allItems.stream()
-                .collect(Collectors.groupingBy(item -> item.getDish().getName()));
+            if (!allItems.isEmpty()) {
+                Map<String, List<OrderItem>> groupedItems = allItems.stream()
+                        .collect(Collectors.groupingBy(item -> item.getDish().getName()));
 
-        // Tính tổng tiền
-        BigDecimal grandTotal = allItems.stream()
-                .map(item -> item.getPricePerItem().multiply(new BigDecimal(item.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal grandTotal = allItems.stream()
+                        .map(item -> {
+                            BigDecimal price = item.getPricePerItem() != null ? item.getPricePerItem() : BigDecimal.ZERO;
+                            return price.multiply(new BigDecimal(item.getQuantity()));
+                        })
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        model.addAttribute("groupedItems", groupedItems);
-        model.addAttribute("grandTotal", grandTotal);
+                model.addAttribute("groupedItems", groupedItems);
+                model.addAttribute("grandTotal", grandTotal);
+            } else {
+                model.addAttribute("groupedItems", Collections.emptyMap());
+                model.addAttribute("grandTotal", BigDecimal.ZERO);
+            }
+        } else {
+            model.addAttribute("groupedItems", Collections.emptyMap());
+            model.addAttribute("grandTotal", BigDecimal.ZERO);
+        }
 
         return "home";
     }
@@ -87,7 +99,7 @@ public class HomeController {
             redirectAttributes.addFlashAttribute("successMessage", "Upload ảnh thành công!");
         } catch (IOException e) {
             e.printStackTrace();
-            redirectAttributes.addFlashAttribute("errorMessage", "Upload ảnh thất bại.");
+            redirectAttributes.addFlashAttribute("errorMessage", "Upload ảnh thất bại: " + e.getMessage());
         }
         return "redirect:/";
     }
@@ -122,8 +134,12 @@ public class HomeController {
             return "redirect:/";
         }
 
-        orderService.addToCart(loggedInUser.getId(), dishId, quantity);
-        redirectAttributes.addFlashAttribute("successMessage", "Đã thêm món ăn vào giỏ hàng.");
+        try {
+            orderService.addToCart(loggedInUser.getId(), dishId, quantity);
+            redirectAttributes.addFlashAttribute("successMessage", "Đã thêm món ăn vào giỏ hàng.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra: " + e.getMessage());
+        }
         return "redirect:/";
     }
 
@@ -137,8 +153,12 @@ public class HomeController {
             return "redirect:/";
         }
 
-        orderService.completeOrder(loggedInUser.getId());
-        redirectAttributes.addFlashAttribute("successMessage", "Đặt cơm thành công!");
+        try {
+            orderService.completeOrder(loggedInUser.getId());
+            redirectAttributes.addFlashAttribute("successMessage", "Đặt cơm thành công!");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra: " + e.getMessage());
+        }
         return "redirect:/";
     }
 
@@ -147,8 +167,12 @@ public class HomeController {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
 
-        orderService.cancelOrder(loggedInUser.getId());
-        redirectAttributes.addFlashAttribute("successMessage", "Đã hủy đơn hàng.");
+        try {
+            orderService.cancelOrder(loggedInUser.getId());
+            redirectAttributes.addFlashAttribute("successMessage", "Đã hủy đơn hàng.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra: " + e.getMessage());
+        }
         return "redirect:/";
     }
 }

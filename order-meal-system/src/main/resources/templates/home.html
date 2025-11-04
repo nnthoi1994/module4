@@ -29,14 +29,18 @@
         <a class="navbar-brand" th:href="@{/}">
             <i class="bi bi-egg-fried"></i> Đặt Cơm Online
         </a>
-        <div class="collapse navbar-collapse">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item dropdown" th:if="${loggedInUser != null}">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-circle"></i>
-                        Chào, <span th:text="${loggedInUser.fullName}"></span>
+                        Chào, <span th:text="${loggedInUser.fullName}">User</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                         <li><a class="dropdown-item" th:href="@{/history/personal}">Lịch sử đặt cơm</a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" th:href="@{/logout}">Đăng xuất</a></li>
@@ -48,17 +52,23 @@
 </nav>
 
 <div class="container mt-4">
-    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert" th:text="${successMessage}"></div>
-    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert" th:text="${errorMessage}"></div>
-    <div th:if="${infoMessage}" class="alert alert-info alert-dismissible fade show" role="alert" th:text="${infoMessage}"></div>
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert" th:text="${successMessage}">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert" th:text="${errorMessage}">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${infoMessage}" class="alert alert-info alert-dismissible fade show" role="alert" th:text="${infoMessage}">
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 
-    <div class="card" th:if="${loggedInUser.role == 'ADMIN'}">
+    <div class="card" th:if="${loggedInUser != null && loggedInUser.role == 'ADMIN'}">
         <div class="card-header bg-danger text-white">Bảng Điều Khiển Của Admin</div>
         <div class="card-body d-flex flex-wrap gap-2 justify-content-center">
             <form th:action="@{/admin/toggle-lock}" method="post">
                 <button type="submit" class="btn" th:classappend="${isOrderingLocked} ? 'btn-success' : 'btn-warning'">
-                    <i th:classappend="${isOrderingLocked} ? 'bi-unlock-fill' : 'bi-lock-fill'"></i>
-                    <span th:text="${isOrderingLocked} ? 'Mở lại đặt món' : 'Kết thúc chọn món'"></span>
+                    <i th:class="${isOrderingLocked ? 'bi bi-unlock-fill' : 'bi bi-lock-fill'}"></i>
+                    <span th:text="${isOrderingLocked ? 'Mở lại đặt món' : 'Kết thúc chọn món'}">Toggle</span>
                 </button>
             </form>
             <form th:action="@{/admin/random-picker}" method="post">
@@ -95,10 +105,10 @@
                     </form>
                     <hr>
                     <p class="fw-bold">Ảnh đã upload hôm nay:</p>
-                    <div class="image-gallery" th:if="${!#lists.isEmpty(todaysImages)}">
+                    <div class="image-gallery" th:if="${todaysImages != null && !#lists.isEmpty(todaysImages)}">
                         <img th:each="img : ${todaysImages}" th:src="@{${img.filePath}}" alt="Ảnh món ăn">
                     </div>
-                    <p th:if="${#lists.isEmpty(todaysImages)}" class="text-muted">Chưa có ảnh nào được upload hôm nay.</p>
+                    <p th:if="${todaysImages == null || #lists.isEmpty(todaysImages)}" class="text-muted">Chưa có ảnh nào được upload hôm nay.</p>
                 </div>
             </div>
 
@@ -137,21 +147,21 @@
                         <tbody>
                         <tr th:each="dish : ${dishes}">
                             <form th:action="@{/cart/add}" method="post">
-                                <td th:text="${dish.name}"></td>
-                                <td th:text="${#numbers.formatDecimal(dish.price, 0, 'COMMA', 0, 'POINT')} + ' đ'"></td>
+                                <td th:text="${dish.name}">Món ăn</td>
+                                <td th:text="${#numbers.formatDecimal(dish.price, 0, 'COMMA', 0, 'POINT')} + ' đ'">25,000 đ</td>
                                 <td>
                                     <input type="hidden" name="dishId" th:value="${dish.id}">
                                     <input type="number" name="quantity" class="form-control form-control-sm" value="1" min="1">
                                 </td>
                                 <td>
                                     <button type="submit" class="btn btn-sm btn-primary"
-                                            th:disabled="${isOrderingLocked and loggedInUser.role != 'ADMIN'}">
+                                            th:disabled="${isOrderingLocked && loggedInUser.role != 'ADMIN'}">
                                         <i class="bi bi-cart-plus-fill"></i> Thêm
                                     </button>
                                 </td>
                             </form>
                         </tr>
-                        <tr th:if="${#lists.isEmpty(dishes)}">
+                        <tr th:if="${dishes == null || #lists.isEmpty(dishes)}">
                             <td colspan="4" class="text-center text-muted">Chưa có món ăn nào được tạo.</td>
                         </tr>
                         </tbody>
@@ -164,30 +174,30 @@
             <div class="card">
                 <div class="card-header bg-info text-white">3. Giỏ Hàng Của Bạn</div>
                 <div class="card-body">
-                    <div th:if="${cart == null or #lists.isEmpty(cart.items)}">
+                    <div th:if="${cart == null || cart.items == null || #lists.isEmpty(cart.items)}">
                         <p class="text-muted">Giỏ hàng của bạn đang trống.</p>
                     </div>
-                    <div th:if="${cart != null and !#lists.isEmpty(cart.items)}">
+                    <div th:if="${cart != null && cart.items != null && !#lists.isEmpty(cart.items)}">
                         <ul class="list-group list-group-flush">
                             <li th:each="item : ${cart.items}" class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
-                                    <span th:text="${item.dish.name}"></span>
-                                    <small class="d-block text-muted" th:text="'SL: ' + ${item.quantity}"></small>
+                                    <span th:text="${item.dish.name}">Món ăn</span>
+                                    <small class="d-block text-muted" th:text="'SL: ' + ${item.quantity}">SL: 1</small>
                                 </div>
                                 <span class="badge bg-primary rounded-pill"
-                                      th:text="${#numbers.formatDecimal(item.pricePerItem.multiply(item.quantity), 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                                      th:text="${#numbers.formatDecimal(item.pricePerItem * item.quantity, 0, 'COMMA', 0, 'POINT')} + ' đ'">25,000 đ
                                 </span>
                             </li>
                         </ul>
                         <hr>
                         <div class="d-flex justify-content-between fw-bold fs-5">
                             <span>Tổng cộng:</span>
-                            <span th:text="${#numbers.formatDecimal(cart.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+                            <span th:text="${#numbers.formatDecimal(cart.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">25,000 đ</span>
                         </div>
                         <div class="d-flex gap-2 mt-3">
                             <form th:action="@{/order/complete}" method="post" class="flex-grow-1">
                                 <button class="btn btn-success w-100" type="submit"
-                                        th:disabled="${isOrderingLocked and loggedInUser.role != 'ADMIN'}">
+                                        th:disabled="${isOrderingLocked && loggedInUser.role != 'ADMIN'}">
                                     <i class="bi bi-check-circle-fill"></i> Hoàn tất
                                 </button>
                             </form>
@@ -205,7 +215,7 @@
                 <div class="card-header bg-secondary text-white">
                     <div class="d-flex justify-content-between">
                         <span>Tổng Hợp Đơn Hàng Hôm Nay</span>
-                        <a th:href="@{/history/general}" class="text-white">Xem lịch sử chung &raquo;</a>
+                        <a th:href="@{/history/general}" class="text-white text-decoration-none">Xem lịch sử chung &raquo;</a>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -218,40 +228,40 @@
                         </tr>
                         </thead>
                         <tbody>
+                        <tr th:if="${groupedItems == null || #maps.isEmpty(groupedItems)}">
+                            <td colspan="3" class="text-center text-muted">Chưa có ai hoàn tất đặt cơm.</td>
+                        </tr>
                         <tr th:each="entry : ${groupedItems}">
                             <td>
-                                <strong th:text="${entry.key}"></strong>
+                                <strong th:text="${entry.key}">Món ăn</strong>
                                 <div class="user-list">
-                                    <span th:each="orderItem, iter : ${entry.value}" th:remove="tag">
-                                        <span th:text="${orderItem.order.user.fullName} + ' (' + ${orderItem.quantity} + ')'"></span><span th:if="${!iter.last}">, </span>
+                                    <span th:each="orderItem, iterStat : ${entry.value}">
+                                        <span th:text="${orderItem.order.user.fullName} + ' (' + ${orderItem.quantity} + ')'">User (1)</span><span th:if="${!iterStat.last}">, </span>
                                     </span>
                                 </div>
                             </td>
                             <td class="text-center">
-                                <th:block th:with="totalQty=0">
+                                <th:block th:with="totalQuantity=0">
                                     <th:block th:each="item : ${entry.value}">
-                                        <th:block th:with="totalQty=${totalQty + item.quantity}"></th:block>
+                                        <th:block th:with="totalQuantity=${totalQuantity + item.quantity}"></th:block>
                                     </th:block>
-                                    <span th:text="${totalQty}"></span>
+                                    <span th:text="${totalQuantity}">0</span>
                                 </th:block>
                             </td>
                             <td class="text-end">
                                 <th:block th:with="subtotal=0">
                                     <th:block th:each="item : ${entry.value}">
-                                        <th:block th:with="subtotal=${subtotal + (item.pricePerItem.multiply(T(java.math.BigDecimal).valueOf(item.quantity)))}"></th:block>
+                                        <th:block th:with="subtotal=${subtotal + (item.pricePerItem * item.quantity)}"></th:block>
                                     </th:block>
-                                    <span th:text="${#numbers.formatDecimal(subtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+                                    <span th:text="${#numbers.formatDecimal(subtotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</span>
                                 </th:block>
                             </td>
                         </tr>
-                        <tr th:if="${#maps.isEmpty(groupedItems)}">
-                            <td colspan="3" class="text-center text-muted">Chưa có ai hoàn tất đặt cơm.</td>
-                        </tr>
                         </tbody>
-                        <tfoot th:if="${!#maps.isEmpty(groupedItems)}">
+                        <tfoot th:if="${groupedItems != null && !#maps.isEmpty(groupedItems)}">
                         <tr class="table-light fw-bold fs-5">
                             <td colspan="2" class="text-end">TỔNG CỘNG</td>
-                            <td class="text-end" th:text="${#numbers.formatDecimal(grandTotal, 0, 'COMMA', 0, 'POINT')} + ' đ'"></td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(grandTotal != null ? grandTotal : 0, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
                         </tr>
                         </tfoot>
                     </table>
@@ -266,13 +276,13 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">Kết quả chọn người đi lấy cơm</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body text-center">
                 <p class="fs-5">Xin chúc mừng 2 bạn có tên sau đây:</p>
                 <div th:if="${randomPickerResult != null}">
                     <h3 th:each="user : ${randomPickerResult}" class="my-3">
-                        <span class="badge bg-success" th:text="${user.fullName}"></span>
+                        <span class="badge bg-success" th:text="${user.fullName}">User</span>
                     </h3>
                 </div>
             </div>
@@ -287,15 +297,16 @@
 <script th:inline="javascript">
     // Tự động ẩn các thông báo sau 5 giây
     setTimeout(() => {
-        const alert = document.querySelector('.alert');
-        if (alert) {
-            new bootstrap.Alert(alert).close();
-        }
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
     }, 5000);
 
     // Tự động hiển thị Modal kết quả nếu có
     /*[# th:if="${randomPickerResult != null}"]*/
-    var resultModal = new bootstrap.Modal(document.getElementById('pickerResultModal'));
+    const resultModal = new bootstrap.Modal(document.getElementById('pickerResultModal'));
     resultModal.show();
     /*[/]*/
 </script>
