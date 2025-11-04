@@ -64,14 +64,27 @@ public class HomeController {
                 Map<String, List<OrderItem>> groupedItems = allItems.stream()
                         .collect(Collectors.groupingBy(item -> item.getDish().getName()));
 
-                BigDecimal grandTotal = allItems.stream()
-                        .map(item -> {
-                            BigDecimal price = item.getPricePerItem() != null ? item.getPricePerItem() : BigDecimal.ZERO;
-                            return price.multiply(new BigDecimal(item.getQuantity()));
-                        })
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                // Tính tổng số lượng cho mỗi món
+                Map<String, Integer> totalQuantities = groupedItems.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                entry -> entry.getValue().stream().mapToInt(OrderItem::getQuantity).sum()
+                        ));
+
+                // Tính tổng tiền cho mỗi món
+                Map<String, BigDecimal> subtotals = groupedItems.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                entry -> entry.getValue().stream()
+                                        .map(item -> item.getPricePerItem().multiply(BigDecimal.valueOf(item.getQuantity())))
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add)
+                        ));
+
+                BigDecimal grandTotal = subtotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 model.addAttribute("groupedItems", groupedItems);
+                model.addAttribute("totalQuantities", totalQuantities); // Gửi tổng số lượng
+                model.addAttribute("subtotals", subtotals); // Gửi tổng tiền
                 model.addAttribute("grandTotal", grandTotal);
             } else {
                 model.addAttribute("groupedItems", Collections.emptyMap());
@@ -122,6 +135,29 @@ public class HomeController {
         return "redirect:/";
     }
 
+    // *** ENDPOINT MỚI ĐỂ XÓA MÓN ĂN (ADMIN) ***
+    @PostMapping("/dishes/delete/{id}")
+    public String deleteDish(@PathVariable Long id, RedirectAttributes redirectAttributes, HttpSession session) {
+        User loggedInUser = (User) session.getAttribute("loggedInUser");
+        if (loggedInUser == null) return "redirect:/login";
+
+        // Chỉ Admin mới có quyền xóa
+        if (!"ADMIN".equals(loggedInUser.getRole())) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thực hiện hành động này.");
+            return "redirect:/";
+        }
+
+        try {
+            dishService.deleteById(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Đã xóa món ăn thành công.");
+        } catch (Exception e) {
+            // Thêm lỗi nếu món ăn này đã được đặt trong 1 đơn hàng (khóa ngoại)
+            redirectAttributes.addFlashAttribute("errorMessage", "Không thể xóa món ăn này. Có thể món ăn đã được đặt trong một đơn hàng nào đó.");
+        }
+        return "redirect:/";
+    }
+
+
     @PostMapping("/cart/add")
     public String addToCart(@RequestParam Long dishId,
                             @RequestParam int quantity,
@@ -153,6 +189,13 @@ public class HomeController {
             return "redirect:/";
         }
 
+        // Kiểm tra giỏ hàng có rỗng không
+        Order cart = orderService.getOrCreateCart(loggedInUser);
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Giỏ hàng của bạn đang rỗng. Không thể hoàn tất.");
+            return "redirect:/";
+        }
+
         try {
             orderService.completeOrder(loggedInUser.getId());
             redirectAttributes.addFlashAttribute("successMessage", "Đặt cơm thành công!");
@@ -172,6 +215,27 @@ public class HomeController {
             redirectAttributes.addFlashAttribute("successMessage", "Đã hủy đơn hàng.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra: " + e.getMessage());
+        }
+        return "redirect:/";
+    }
+
+    // *** ENDPOINT MỚI ĐỂ CHỌN NGẪU NHIÊN (CHO MỌI NGƯỜI) ***
+    @PostMapping("/picker/random")
+    public String pickRandomUsers(RedirectAttributes redirectAttributes, HttpSession session) {
+        if (session.getAttribute("loggedInUser") == null) return "redirect:/login";
+
+        // Bất kỳ ai cũng có thể bấm, nhưng chỉ chạy khi Admin đã khóa
+        if (!appStateService.isOrderingLocked()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Chức năng này chỉ mở sau khi Admin 'Kết thúc chọn món'.");
+            return "redirect:/";
+        }
+
+        List<User> selectedUsers = orderService.getRandomUsersToFetchMeals();
+        if (selectedUsers.isEmpty()) {
+            redirectAttributes.addFlashAttribute("infoMessage", "Không có đủ người dùng nam hợp lệ (hoặc chưa ai đặt cơm) để chọn.");
+        } else {
+            redirectAttributes.addFlashAttribute("randomPickerResult", selectedUsers);
+            redirectAttributes.addFlashAttribute("successMessage", "Đã có kết quả! Chúc mừng người may mắn!");
         }
         return "redirect:/";
     }
