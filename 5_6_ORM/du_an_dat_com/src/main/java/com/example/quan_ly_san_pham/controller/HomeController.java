@@ -1,7 +1,5 @@
 package com.example.quan_ly_san_pham.controller;
 
-
-
 import com.example.quan_ly_san_pham.entity.*;
 import com.example.quan_ly_san_pham.service.*;
 import jakarta.servlet.http.HttpSession;
@@ -15,9 +13,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
-@RequestMapping("/") // Tất cả các request trong controller này đều bắt đầu bằng "/"
+@RequestMapping("/")
 public class HomeController {
 
     @Autowired private IUserService userService;
@@ -26,47 +26,53 @@ public class HomeController {
     @Autowired private OrderService orderService;
     @Autowired private AppStateService appStateService;
 
-    /**
-     * Phương thức này sẽ tự động được gọi trước mỗi request trong controller.
-     * Nó kiểm tra session và thêm thông tin user vào Model nếu họ đã đăng nhập.
-     * Giúp chúng ta không cần lặp lại code lấy user từ session trong mỗi hàm.
-     */
     @ModelAttribute
     public void addUserToModel(Model model, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser != null) {
-            // Tải lại thông tin user từ DB để đảm bảo dữ liệu luôn mới nhất
             userService.findById(loggedInUser.getId()).ifPresent(user -> model.addAttribute("loggedInUser", user));
         }
     }
 
-    /**
-     * Hiển thị trang chủ. Đây là trang chính của ứng dụng.
-     */
     @GetMapping
     public String homePage(Model model, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) {
-            // Nếu chưa đăng nhập, chuyển hướng về trang login
             return "redirect:/login";
         }
 
-        // Tải tất cả dữ liệu cần thiết cho trang chủ
         model.addAttribute("todaysImages", imageService.getTodaysImages());
         model.addAttribute("dishes", dishService.findAll());
-        model.addAttribute("todaysCompletedOrders", orderService.getTodaysCompletedOrders());
+
+        List<Order> todaysCompletedOrders = orderService.getTodaysCompletedOrders();
+        model.addAttribute("todaysCompletedOrders", todaysCompletedOrders);
         model.addAttribute("isOrderingLocked", appStateService.isOrderingLocked());
 
-        // Lấy giỏ hàng hiện tại của người dùng để hiển thị
         Order cart = orderService.getOrCreateCart(loggedInUser);
         model.addAttribute("cart", cart);
 
-        return "home"; // Trả về file home.html
+        // === FIX: Xử lý logic tổng hợp ở đây thay vì trong template ===
+
+        // Lấy tất cả items từ các orders đã hoàn tất
+        List<OrderItem> allItems = todaysCompletedOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .collect(Collectors.toList());
+
+        // Nhóm các items theo tên món ăn
+        Map<String, List<OrderItem>> groupedItems = allItems.stream()
+                .collect(Collectors.groupingBy(item -> item.getDish().getName()));
+
+        // Tính tổng tiền
+        BigDecimal grandTotal = allItems.stream()
+                .map(item -> item.getPricePerItem().multiply(new BigDecimal(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        model.addAttribute("groupedItems", groupedItems);
+        model.addAttribute("grandTotal", grandTotal);
+
+        return "home";
     }
 
-    /**
-     * Xử lý việc upload một hoặc nhiều file ảnh.
-     */
     @PostMapping("/upload")
     public String handleImageUpload(@RequestParam("images") List<MultipartFile> files,
                                     RedirectAttributes redirectAttributes, HttpSession session) {
@@ -86,9 +92,6 @@ public class HomeController {
         return "redirect:/";
     }
 
-    /**
-     * Xử lý việc tạo một món ăn mới.
-     */
     @PostMapping("/dishes/create")
     public String createDish(@RequestParam String name,
                              @RequestParam BigDecimal price,
@@ -107,9 +110,6 @@ public class HomeController {
         return "redirect:/";
     }
 
-    /**
-     * Xử lý việc thêm món ăn vào giỏ hàng.
-     */
     @PostMapping("/cart/add")
     public String addToCart(@RequestParam Long dishId,
                             @RequestParam int quantity,
@@ -117,7 +117,6 @@ public class HomeController {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
 
-        // Kiểm tra xem admin có khóa đặt món không
         if(appStateService.isOrderingLocked() && !"ADMIN".equals(loggedInUser.getRole())) {
             redirectAttributes.addFlashAttribute("errorMessage", "Admin đã khóa chức năng đặt món.");
             return "redirect:/";
@@ -128,15 +127,11 @@ public class HomeController {
         return "redirect:/";
     }
 
-    /**
-     * Xử lý khi người dùng bấm nút "Hoàn tất" đơn hàng.
-     */
     @PostMapping("/order/complete")
     public String completeOrder(RedirectAttributes redirectAttributes, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
 
-        // Kiểm tra lại lần nữa trước khi hoàn tất
         if(appStateService.isOrderingLocked() && !"ADMIN".equals(loggedInUser.getRole())) {
             redirectAttributes.addFlashAttribute("errorMessage", "Admin đã khóa chức năng đặt món, không thể hoàn tất.");
             return "redirect:/";
@@ -147,9 +142,6 @@ public class HomeController {
         return "redirect:/";
     }
 
-    /**
-     * Xử lý khi người dùng bấm nút "Hủy" để xóa giỏ hàng hiện tại.
-     */
     @PostMapping("/order/cancel")
     public String cancelOrder(RedirectAttributes redirectAttributes, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
