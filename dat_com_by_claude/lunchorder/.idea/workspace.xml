@@ -5,42 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="6e32975f-8d4e-43de-bb0f-b6ae0d4f0fc7" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/config/ApplicationConfig.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/config/WebAppInitializer.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/config/WebConfig.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/AdminController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/AuthController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/DishController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/HistoryController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/HomeController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/MenuController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/controller/OrderController.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/interceptor/AuthInterceptor.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/Dish.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/MenuImage.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/Order.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/OrderItem.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/OrderSetting.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/model/User.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/DishRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/MenuImageRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/OrderItemRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/OrderRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/OrderSettingRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/repository/UserRepository.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/DishService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/EmailService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/MenuImageService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/OrderService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/OrderSettingService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/java/com/lunchorder/service/UserService.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/resources/application.properties" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/history-all.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/history-personal.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/home.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/login.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../lunch-order-system/src/main/webapp/WEB-INF/views/register.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../5_6_ORM/du_an_dat_com/src/main/java/com/example/quan_ly_san_pham/cofig/AppConfiguration.java" beforeDir="false" afterPath="$PROJECT_DIR$/../../5_6_ORM/du_an_dat_com/src/main/java/com/example/quan_ly_san_pham/cofig/AppConfiguration.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -132,6 +97,7 @@
       <updated>1762097944606</updated>
       <workItem from="1762097947443" duration="357000" />
       <workItem from="1762102921213" duration="15000" />
+      <workItem from="1762184398918" duration="595000" />
     </task>
     <servers />
   </component>
