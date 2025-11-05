@@ -65,7 +65,10 @@ public class OrderService {
     }
 
     private void updateCartTotal(Order cart) {
-        cart.setItems(orderItemRepository.findByOrderId(cart.getId()));
+        // *** ĐÂY LÀ CHỖ SỬA LỖI ***
+        // Dòng bên dưới đã bị xóa đi. Chúng ta sẽ dùng list 'items' có sẵn trong 'cart'.
+        // cart.setItems(orderItemRepository.findByOrderId(cart.getId()));
+
         BigDecimal total = cart.getItems().stream()
                 .map(item -> item.getPricePerItem().multiply(new BigDecimal(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);

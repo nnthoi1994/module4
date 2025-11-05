@@ -54,26 +54,7 @@ public class AdminController {
         return "redirect:/";
     }
 
-    @PostMapping("/random-picker")
-    public String pickRandomUsers(HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isAdmin(session)) {
-            return "redirect:/";
-        }
-
-        if (!appStateService.isOrderingLocked()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng 'Kết thúc chọn món' trước khi chọn người đi lấy cơm.");
-            return "redirect:/";
-        }
-
-        List<User> selectedUsers = orderService.getRandomUsersToFetchMeals();
-        if (selectedUsers.isEmpty()) {
-            redirectAttributes.addFlashAttribute("infoMessage", "Không có đủ người dùng nam hợp lệ để chọn.");
-        } else {
-            redirectAttributes.addFlashAttribute("randomPickerResult", selectedUsers);
-            redirectAttributes.addFlashAttribute("successMessage", "Đã chọn người đi lấy cơm thành công!");
-        }
-        return "redirect:/";
-    }
+    // *** LOGIC "random-picker" ĐÃ BỊ XÓA KHỎI ĐÂY ***
 
     @PostMapping("/send-payment-emails")
     public String sendPaymentEmails(HttpSession session, RedirectAttributes redirectAttributes) {

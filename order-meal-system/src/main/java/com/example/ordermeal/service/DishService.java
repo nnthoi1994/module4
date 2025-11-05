@@ -27,4 +27,16 @@ public class DishService {
         }
         return null;
     }
+
+    // *** HÀM MỚI ***
+    public void deleteById(Long id) {
+        // (Chúng ta có thể thêm kiểm tra xem món ăn có tồn tại không,
+        // nhưng hiện tại chỉ cần gọi xóa)
+        try {
+            dishRepository.deleteById(id);
+        } catch (Exception e) {
+            // Có thể log lỗi ở đây
+            System.err.println("Lỗi khi xóa món ăn: " + e.getMessage());
+        }
+    }
 }
