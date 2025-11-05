@@ -3,8 +3,13 @@ package com.example.demo.controller;
 
 import com.example.demo.entity.Blog;
 import com.example.demo.service.IBlogService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -18,18 +23,32 @@ public class BlogController {
         this.blogService = blogService;
     }
 
-    @GetMapping
-    public String showBlogList(@RequestParam(value = "keyword", required = false) String keyword, Model model) {
+//    @GetMapping
+//    public String showBlogList(@RequestParam(value = "keyword", required = false) String keyword, Model model) {
+//
+//        List<Blog> blogs;
+//        if (keyword != null && !keyword.trim().isEmpty()) {
+//            blogs = blogService.findByTitleContaining(keyword);
+//        } else {
+//            blogs = blogService.findAll();
+//        }
+//        model.addAttribute("blogs", blogs);
+//        model.addAttribute("title", keyword);
+//        return "blog/list";
+//    }
 
-        List<Blog> blogs;
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            blogs = blogService.findByTitleContaining(keyword);
-        } else {
-            blogs = blogService.findAll();
-        }
-        model.addAttribute("blogs", blogs);
-        model.addAttribute("title", keyword);
-        return "blog/list";
+    @RequestMapping(value = "", method = RequestMethod.GET)
+    public String showList(
+            @RequestParam(name = "page",required = false, defaultValue = "0") int page,
+            @RequestParam(name = "size",required = false, defaultValue = "2") int size,
+            @RequestParam(name = "searchName",required = false, defaultValue = "") String searchName,
+            ModelMap model){
+
+        Pageable pageable = PageRequest.of(page,size, Sort.by("name").ascending().descending());
+        Page<Blog> studentPage = blogService.findAllByNameContaining(searchName,pageable);
+        model.addAttribute("studentPage", studentPage);
+        model.addAttribute("searchName", searchName);
+        return "student/list";
     }
 
 
