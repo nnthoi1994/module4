@@ -20,5 +20,8 @@ public class Blog {
     @Column(columnDefinition = "TEXT")
     private String content;
     private String author;
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Category category;
 
 }

@@ -13,25 +13,29 @@ public class BlogService implements IBlogService {
     public BlogService(IBlogRepository blogRepository) {
         this.blogRepository = blogRepository;
     }
-
     @Override
     public List<Blog> findAll() {
         return blogRepository.findAll();
     }
 
     @Override
-    public Blog findById(int id) {
+    public void save(Blog blog) {
+        blogRepository.save(blog);
+    }
+
+    @Override
+    public Blog findById(Integer id) {
         return blogRepository.findById(id).orElse(null);
     }
 
     @Override
-    public void save(Blog blog) {
-         blogRepository.save(blog);
+    public void deleteById(Integer id) {
+        blogRepository.deleteById(id);
     }
 
     @Override
-    public void deleteById(int id) {
-            blogRepository.deleteById(id);
+    public List<Blog> findByCategoryId(Integer categoryId) {
+        return blogRepository.findByCategoryId(categoryId);
     }
 
     @Override
@@ -40,12 +44,7 @@ public class BlogService implements IBlogService {
     }
 
     @Override
-    public Page<Blog> findAll(Pageable pageable) {
-        return blogRepository.findAll(pageable);
-    }
-
-    @Override
-    public Page<Blog> findAllByNameContaining(String searchName, Pageable pageable) {
-        return blogRepository.findAllByNameContaining(searchName, pageable);
+    public Page<Blog> searchByTitleAndCategory(String title, Integer categoryId, Pageable pageable) {
+        return blogRepository.searchByTitleAndCategory(title, categoryId, pageable);
     }
 }

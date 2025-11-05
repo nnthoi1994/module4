@@ -8,10 +8,12 @@ import java.util.List;
 
 public interface IBlogService{
     List<Blog> findAll();
-    Page<Blog> findAll(Pageable pageable);
-    Page<Blog> findAllByNameContaining(String searchName, Pageable pageable);
-    Blog findById(int id);
+
     void save(Blog blog);
-    void deleteById(int id);
+
+    Blog findById(Integer id);
+    void deleteById(Integer id);
+    List<Blog> findByCategoryId(Integer categoryId);
     List<Blog> findByTitleContaining(String keyword);
+    Page<Blog> searchByTitleAndCategory(String title, Integer categoryId, Pageable pageable);
 }
