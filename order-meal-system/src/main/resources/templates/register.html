@@ -27,7 +27,7 @@
 
     <form th:action="@{/register}" th:object="${user}" method="post">
         <div class="mb-3">
-            <label for="fullName" class="form-label">Họ và Tên</label>
+            <label for="fullName" class="form-label">Họ và Tên (Tên chính xác để check thanh toán)</label>
             <input type="text" class="form-control" id="fullName" th:field="*{fullName}" required>
         </div>
         <div class="mb-3">
@@ -35,7 +35,7 @@
             <input type="text" class="form-control" id="username" th:field="*{username}" pattern="[a-z0-9]+" title="Chỉ chứa ký tự thường và số, viết liền." required>
         </div>
         <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
+            <label for="email" class="form-label">Email (Gửi mã QR thanh toán)</label>
             <input type="email" class="form-control" id="email" th:field="*{email}" required>
         </div>
         <div class="mb-3">
