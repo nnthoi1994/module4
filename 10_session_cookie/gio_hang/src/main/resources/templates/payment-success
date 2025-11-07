@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Successful</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 80vh; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; text-align: center; }
+        h1 { color: #28a745; }
+        p { font-size: 1.2em; }
+        .back-link {
+            background-color: #007bff; color: white; padding: 10px 15px;
+            text-decoration: none; border-radius: 5px; font-weight: bold;
+            display: inline-block; margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Thanh Toán Thành Công!</h1>
+        <p>Cảm ơn bạn đã mua hàng. Đơn hàng của bạn đang được xử lý.</p>
+        <a th:href="@{/shop}" class="back-link">Tiếp tục mua sắm</a>
+    </div>
+</body>
+</html>
