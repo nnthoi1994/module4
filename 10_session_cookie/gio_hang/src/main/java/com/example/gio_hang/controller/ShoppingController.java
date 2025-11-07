@@ -13,7 +13,7 @@ import java.util.Optional;
 @Controller
 public class ShoppingController {
 
-
+    // Tiêm IProductService để tìm sản phẩm
     @Autowired
     private IProductService productService;
 
@@ -25,7 +25,7 @@ public class ShoppingController {
     @GetMapping("/shopping-cart")
     public ModelAndView showCart(@SessionAttribute(value = "cart", required = false) Cart cart) {
         ModelAndView modelAndView = new ModelAndView("/cart");
-
+        // Thêm kiểm tra nếu cart là null (phiên mới)
         if (cart == null) {
             cart = new Cart();
         }
@@ -33,7 +33,11 @@ public class ShoppingController {
         return modelAndView;
     }
 
+    // --- CÁC PHƯƠNG THỨC MỚI ---
 
+    /**
+     * Xử lý cập nhật số lượng
+     */
     @PostMapping("/shopping-cart/update")
     public String updateCart(@RequestParam("id") Long id,
                              @RequestParam("quantity") Integer quantity,
@@ -46,7 +50,9 @@ public class ShoppingController {
         return "redirect:/shopping-cart";
     }
 
-
+    /**
+     * Xử lý xóa sản phẩm
+     */
     @GetMapping("/shopping-cart/remove/{id}")
     public String removeCartItem(@PathVariable Long id,
                                  @SessionAttribute("cart") Cart cart) {
@@ -57,7 +63,9 @@ public class ShoppingController {
         return "redirect:/shopping-cart";
     }
 
-
+    /**
+     * Hiển thị trang xác nhận đơn hàng (Bước 2)
+     */
     @GetMapping("/checkout")
     public ModelAndView showCheckout(@SessionAttribute("cart") Cart cart) {
         ModelAndView modelAndView = new ModelAndView("/order");
@@ -65,17 +73,23 @@ public class ShoppingController {
         return modelAndView;
     }
 
-
+    /**
+     * Xử lý "Thanh toán" (Bước 3)
+     */
     @PostMapping("/payment")
     public String processPayment(@SessionAttribute("cart") Cart cart) {
+        // Ở đây bạn có thể thêm logic lưu đơn hàng vào DB
 
+        // Xóa giỏ hàng sau khi thanh toán
         cart.clearCart();
 
-
+        // Chuyển đến trang thông báo thành công
         return "redirect:/payment-success";
     }
 
-
+    /**
+     * Hiển thị trang thanh toán thành công
+     */
     @GetMapping("/payment-success")
     public String showPaymentSuccess() {
         return "/payment-success";

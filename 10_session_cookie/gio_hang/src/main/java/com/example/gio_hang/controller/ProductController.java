@@ -28,22 +28,10 @@ public class ProductController {
         return modelAndView;
     }
 
-    @GetMapping("/add/{id}")
-    public String addToCart(@PathVariable Long id,
-                            @ModelAttribute Cart cart,
-                            @RequestParam("action") String action) {
-        Optional<Product> productOptional = productService.findById(id);
-        if (!productOptional.isPresent()) {
-            return "/error_404";
-        }
-        if (action.equals("show")) {
-            cart.addProduct(productOptional.get());
-            return "redirect:/shopping-cart";
-        }
-        cart.addProduct(productOptional.get());
-        return "redirect:/shop";
-    }
-
+    // --- PHƯƠNG THỨC MỚI ---
+    /**
+     * Hiển thị trang chi tiết sản phẩm
+     */
     @GetMapping("/shop/view/{id}")
     public ModelAndView showProductDetail(@PathVariable Long id) {
         Optional<Product> productOptional = productService.findById(id);
@@ -55,5 +43,33 @@ public class ProductController {
         ModelAndView modelAndView = new ModelAndView("/detail");
         modelAndView.addObject("product", productOptional.get());
         return modelAndView;
+    }
+
+
+    @GetMapping("/add/{id}")
+    public String addToCart(@PathVariable Long id,
+                            @ModelAttribute Cart cart,
+                            @RequestParam("action") String action) {
+        Optional<Product> productOptional = productService.findById(id);
+        if (!productOptional.isPresent()) {
+            return "/error_404";
+        }
+        Product product = productOptional.get();
+
+        if (action.equals("show")) {
+            // Thêm vào giỏ hàng và chuyển đến trang giỏ hàng
+            cart.addProduct(product);
+            return "redirect:/shopping-cart";
+        }
+
+        if (action.equals("detail")) {
+            // Thêm vào giỏ hàng và ở lại trang chi tiết
+            cart.addProduct(product);
+            return "redirect:/shop/view/" + id; // Quay lại trang chi tiết
+        }
+
+        // Thêm vào giỏ hàng và ở lại trang shop
+        cart.addProduct(product);
+        return "redirect:/shop";
     }
 }
