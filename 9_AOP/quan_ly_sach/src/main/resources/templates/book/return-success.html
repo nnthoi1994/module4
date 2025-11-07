@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trả sách thành công</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding-top: 60px; background: #e3f2fd; }
+        .box {
+            background: white;
+            padding: 30px;
+            display: inline-block;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 18px;
+            background: #007bff;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 6px;
+        }
+        a:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h2 th:text="${message}"></h2>
+    <a href="/books">Quay lại danh sách</a>
+</div>
+
+</body>
+</html>

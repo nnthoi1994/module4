@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách bài hát</title>
+    <style>
+        /* Reset cơ bản */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            padding: 30px;
+            color: #333;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        /* Nút thêm bài hát */
+        a.button {
+            display: inline-block;
+            text-decoration: none;
+            color: #fff;
+            background-color: #28a745;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            transition: 0.3s;
+        }
+
+        a.button:hover {
+            background-color: #218838;
+        }
+
+        /* Bảng */
+        table {
+            width: 80%;
+            margin: 0 auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #007bff;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        tr:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Link hành động trong bảng */
+        td a.edit-link {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        td a.edit-link:hover {
+            background-color: #e0a800;
+            color: #fff;
+        }
+
+        /* Responsive cho bảng */
+        @media (max-width: 768px) {
+            table {
+                width: 100%;
+            }
+            th, td {
+                padding: 10px;
+            }
+            a.button {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+<h2>Danh sách bài hát</h2>
+<div style="text-align: center; margin-bottom: 15px;">
+    <a th:href="@{/songs/create}" class="button">Thêm bài hát mới</a>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>STT</th>
+        <th>Tên bài hát</th>
+        <th>Ca sĩ</th>
+        <th>Thể loại</th>
+        <th>Hành động</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="song, stat : ${songs}">
+        <td th:text="${stat.count}"></td>
+        <td th:text="${song.nameSong}"></td>
+        <td th:text="${song.singer}"></td>
+        <td th:text="${song.kindOfMusic}"></td>
+        <td>
+            <a th:href="@{'/songs/edit/' + ${song.id}}">Sửa</a>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

@@ -1,4 +1,4 @@
-package com.example.demo.entity;
+package com.example.quan_ly_sach.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -6,22 +6,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-public class Blog {
+public class Book {
     @Id
-
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String title;
-    @Column(columnDefinition = "TEXT")
-    private String content;
-    private String author;
-    @ManyToOne
-    @JoinColumn(name = "category_id")
-    private Category category;
-
+    private int quantity;
+    @OneToMany(mappedBy = "book")
+    private List<BorrowCode> borrowCodes;
 }

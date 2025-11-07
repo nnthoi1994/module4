@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Form bài hát</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 25px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        a {
+            text-decoration: none;
+            color: #555;
+            font-size: 14px;
+        }
+
+        a:hover {
+            color: #000;
+        }
+
+        div[th\\:if] {
+            font-size: 12px;
+            margin-bottom: 10px;
+            color: red;
+        }
+
+    </style>
+</head>
+<body>
+<h2 th:text="${id != null} ? 'Sửa bài hát' : 'Thêm bài hát mới'"></h2>
+
+<form th:action="${id != null} ? @{/songs/update/{id}(id=${id})} : @{/songs/save}"
+      th:object="${songDto}" method="post">
+
+    <label for="nameSong">Tên bài hát:</label><br>
+    <input type="text" id="nameSong" th:field="*{nameSong}"><br>
+    <div style="color:red;" th:if="${#fields.hasErrors('nameSong')}"
+         th:errors="*{nameSong}"></div>
+    <br>
+
+    <label for="singer">Ca sĩ:</label><br>
+    <input type="text" id="singer" th:field="*{singer}"><br>
+    <div style="color:red;" th:if="${#fields.hasErrors('singer')}"
+         th:errors="*{singer}"></div>
+    <br>
+
+    <label for="kindOfMusic">Thể loại:</label><br>
+    <input type="text" id="kindOfMusic" th:field="*{kindOfMusic}"><br>
+    <div style="color:red;" th:if="${#fields.hasErrors('kindOfMusic')}"
+         th:errors="*{kindOfMusic}"></div>
+    <br>
+
+    <button type="submit" th:text="${id != null} ? 'Cập nhật' : 'Lưu'"></button>
+    <a th:href="@{/songs}">Hủy</a>
+</form>
+</body>
+</html>
