@@ -1,0 +1,1 @@
+Bổ sung chức năng phóng to ảnh, xóa món trong danh sách chung

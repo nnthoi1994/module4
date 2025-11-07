@@ -39,6 +39,13 @@ public class AdminController {
         boolean isCurrentlyLocked = appStateService.isOrderingLocked();
         appStateService.setOrderingLocked(!isCurrentlyLocked);
 
+        // *** THÊM LOGIC RESET QUAY SỐ ***
+        if (isCurrentlyLocked) {
+            // Nếu nó ĐANG BỊ KHÓA, nghĩa là Admin bấm "Mở lại đặt món"
+            // -> Reset trạng thái quay số
+            appStateService.resetPickerState();
+        }
+
         String message = isCurrentlyLocked ? "Đã MỞ KHÓA chức năng đặt cơm." : "Đã KHÓA chức năng đặt cơm.";
         redirectAttributes.addFlashAttribute("successMessage", message);
         return "redirect:/";
@@ -51,12 +58,15 @@ public class AdminController {
         }
 
         orderService.resetTodaysOrders();
+        appStateService.resetPickerState(); // *** THÊM DÒNG NÀY ***
+
         redirectAttributes.addFlashAttribute("successMessage", "Đã reset toàn bộ đơn hàng hôm nay.");
         return "redirect:/";
     }
 
     @PostMapping("/send-payment-emails")
     public String sendPaymentEmails(HttpSession session, RedirectAttributes redirectAttributes) {
+        // ... (Không thay đổi)
         if (!isAdmin(session)) {
             return "redirect:/";
         }
@@ -89,9 +99,9 @@ public class AdminController {
         return "redirect:/";
     }
 
-    // *** ENDPOINT MỚI ĐỂ ADMIN XÓA ĐƠN HÀNG ***
     @PostMapping("/order/delete/{orderId}")
     public String deleteCompletedOrder(@PathVariable Long orderId, HttpSession session, RedirectAttributes redirectAttributes) {
+        // ... (Không thay đổi)
         if (!isAdmin(session)) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thực hiện hành động này.");
             return "redirect:/";

@@ -54,6 +54,14 @@
             --bs-btn-font-size: .65rem;
         }
 
+        /* CSS CHO DISH LIST TRONG BẢNG MỚI */
+        .summary-table .dish-list {
+            font-size: 0.9em;
+            color: #555;
+            font-style: italic;
+        }
+
+
         /* CSS CHO MODAL LIGHTBOX */
         .modal-lg .carousel-item img {
             max-height: 90vh;
@@ -292,20 +300,46 @@
                 <div class="card-body text-center">
                     <p>Ai sẽ là người đi lấy cơm hôm nay?</p>
                     <form th:action="@{/picker/random}" method="post">
-                        <button type="submit" class="btn btn-info" th:disabled="${!isOrderingLocked}">
-                            <i class="bi bi-shuffle"></i> Quay số ngay!
+                        <button type="submit" class="btn btn-info"
+                                th:disabled="${!appState.isOrderingLocked || (appState.hasBeenSpun && loggedInUser.role != 'ADMIN')}">
+                            <i class="bi bi-shuffle"></i>
+                            <span th:if="${appState.hasBeenSpun && loggedInUser.role == 'ADMIN'}">Quay lại (Admin)</span>
+                            <span th:if="${!appState.hasBeenSpun}">Quay số ngay!</span>
                         </button>
                     </form>
-                    <div class="form-text" th:if="${!isOrderingLocked}">
+                    <div class="form-text" th:if="${!appState.isOrderingLocked}">
                         Chức năng chỉ mở sau khi Admin "Kết thúc chọn món".
                     </div>
+                    <div class="form-text text-danger" th:if="${appState.isOrderingLocked && appState.hasBeenSpun && loggedInUser.role != 'ADMIN'}">
+                        Đã có người quay số. Chỉ Admin được quay lại.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" th:if="${appState.hasBeenSpun && appState.pickerUser != null}">
+                <div class="card-header bg-success-subtle text-dark">5. Kết Quả Quay Số</div>
+                <div class="card-body text-center">
+                    <p class="mb-2">
+                        Người quay số:
+                        <strong th:text="${appState.pickerUser.fullName}"></strong>
+                    </p>
+                    <hr class="my-2">
+                    <p class="fs-5 mb-2">Người đi lấy cơm hôm nay:</p>
+                    <div th:if="${selectedUsers != null && !selectedUsers.isEmpty()}">
+                        <h3 th:each="user : ${selectedUsers}" class="my-2">
+                            <span class="badge bg-success" th:text="${user.fullName}">User</span>
+                        </h3>
+                    </div>
+                    <p th:if="${selectedUsers == null || selectedUsers.isEmpty()}" class="text-muted">
+                        Không chọn được ai.
+                    </p>
                 </div>
             </div>
 
             <div class="card summary-table">
                 <div class="card-header bg-secondary text-white">
                     <div class="d-flex justify-content-between">
-                        <span>Tổng Hợp Đơn Hàng Hôm Nay</span>
+                        <span>Tổng Hợp (Theo Món Ăn)</span>
                         <a th:href="@{/history/general}" class="text-white text-decoration-none">Xem lịch sử chung &raquo;</a>
                     </div>
                 </div>
@@ -335,15 +369,14 @@
                                         <form th:if="${loggedInUser.role == 'ADMIN'}"
                                               th:action="@{/admin/order/delete/{id}(id=${orderItem.order.id})}"
                                               method="post" class="delete-order-btn"
-
                                               th:data-user-name="${orderItem.order.user.fullName}"
-
                                               onsubmit="return confirmOrderDelete(this);">
 
                                             <button type="submit" class="btn btn-danger">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
                                         </form>
+
                                         <span th:if="${!iterStat.last}">, </span>
                                     </th:block>
 
@@ -362,27 +395,47 @@
                     </table>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<div class="modal fade" id="pickerResultModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">Kết quả chọn người đi lấy cơm</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                <p class="fs-5">Xin chúc mừng 2 bạn có tên sau đây:</p>
-                <div th:if="${randomPickerResult != null}">
-                    <h3 th:each="user : ${randomPickerResult}" class="my-3">
-                        <span class="badge bg-success" th:text="${user.fullName}">User</span>
-                    </h3>
+            <div class="card summary-table">
+                <div class="card-header bg-secondary text-white">
+                    <span>Tổng Hợp (Theo Người Đặt)</span>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>Người đặt món</th>
+                            <th>Tổng số lượng</th>
+                            <th>Thành tiền</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${userSummaries == null || #lists.isEmpty(userSummaries)}">
+                            <td colspan="3" class="text-center text-muted">Chưa có ai hoàn tất đặt cơm.</td>
+                        </tr>
+
+                        <tr th:each="summary : ${userSummaries}">
+                            <td>
+                                <strong th:text="${summary.user.fullName}">Tên Người Dùng</strong>
+                                <div class="dish-list">
+                                    <span th:each="item, iterStat : ${summary.mergedItems}">
+                                        <span th:text="${item.dish.name} + ' (' + ${item.quantity} + ')'">Món ăn (1)</span><span th:if="${!iterStat.last}">, </span>
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="text-center" th:text="${summary.totalQuantity}">0</td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(summary.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                        </tr>
+                        </tbody>
+                        <tfoot th:if="${userSummaries != null && !#lists.isEmpty(userSummaries)}">
+                        <tr class="table-light fw-bold fs-5">
+                            <td class="text-end">TỔNG CỘNG</td>
+                            <td class="text-center" th:text="${summaryTotalQuantity}">0</td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(summaryTotalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                        </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -438,12 +491,6 @@
         });
     }, 5000);
 
-    // Tự động hiển thị Modal kết quả nếu có
-    /*[# th:if="${randomPickerResult != null}"]*/
-    const resultModal = new bootstrap.Modal(document.getElementById('pickerResultModal'));
-    resultModal.show();
-    /*[/]*/
-
     // JAVASCRIPT CHO LIGHTBOX ẢNH
     const imageCarouselElement = document.getElementById('imageCarousel');
     if (imageCarouselElement) {
@@ -464,15 +511,13 @@
         });
     }
 
-    // *** BẮT ĐẦU SỬA LỖI ***
-    // JAVASCRIPT MỚI ĐỂ XÁC NHẬN XÓA ĐƠN HÀNG (AN TOÀN)
+    // JAVASCRIPT ĐỂ XÁC NHẬN XÓA ĐƠN HÀNG (AN TOÀN)
     function confirmOrderDelete(formElement) {
         // Lấy tên từ thuộc tính 'data-user-name'
         const userName = formElement.dataset.userName || 'người dùng này';
         const message = `Bạn có chắc muốn xóa toàn bộ đơn hàng hôm nay của ${userName}?`;
         return confirm(message);
     }
-    // *** KẾT THÚC SỬA LỖI ***
 </script>
 
 </body>
