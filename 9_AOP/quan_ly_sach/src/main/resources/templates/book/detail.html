@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Chi tiết sách</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+        }
+        .card {
+            width: 350px;
+            border: 1px solid #555;
+            padding: 20px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .title {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .info {
+            margin-bottom: 15px;
+        }
+        a.button {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+        a.button:hover {
+            background: #0056b3;
+        }
+        a.back {
+            display: inline-block;
+            margin-top: 15px;
+            text-decoration: none;
+        }
+    </style>
+
+</head>
+<body>
+
+<div class="card">
+    <div class="title" th:text="${book.title}">Tên sách</div>
+    <div class="info">
+        <strong>Số lượng còn:</strong>
+        <span th:text="${book.quantity}"></span>
+    </div>
+
+    <a th:href="@{/books/borrow/{id}(id=${book.id})}" class="button">Mượn sách</a>
+
+    <br>
+    <a href="/books" class="back">← Quay lại danh sách</a>
+</div>
+
+</body>
+</html>
