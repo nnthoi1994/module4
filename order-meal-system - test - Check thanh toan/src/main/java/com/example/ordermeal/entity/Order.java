@@ -36,8 +36,8 @@ public class Order {
     private boolean isCompleted = false;
 
     // *** BẮT ĐẦU THÊM MỚI ***
-    @Column(nullable = false)
-    private boolean isPaid = false; // Mặc định là chưa thanh toán
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isPaid = false; // Trạng thái thanh toán
     // *** KẾT THÚC THÊM MỚI ***
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)

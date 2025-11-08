@@ -79,4 +79,16 @@ public class AppStateService {
         appState.setSelectedUsersJson(null);
         appStateRepository.save(appState);
     }
+
+    // *** BẮT ĐẦU THÊM MỚI ***
+    // Cập nhật thông tin ngân hàng
+    public void updateBankInfo(String bin, String accountNo, String accountName, String bankName) {
+        AppState appState = getAppState();
+        appState.setBankBin(bin);
+        appState.setBankAccountNo(accountNo);
+        appState.setBankAccountName(accountName);
+        appState.setBankName(bankName);
+        appStateRepository.save(appState);
+    }
+    // *** KẾT THÚC THÊM MỚI ***
 }

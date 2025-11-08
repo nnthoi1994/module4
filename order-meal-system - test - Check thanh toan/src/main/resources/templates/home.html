@@ -11,7 +11,7 @@
         .card-header { font-weight: 600; }
         .summary-table .user-list { font-size: 0.9em; color: #555; }
 
-        /* CSS CHO GALLERY ẢNH MỚI */
+        /* ... (CSS gallery, delete button không đổi) ... */
         .image-gallery-item {
             position: relative;
             display: inline-block;
@@ -36,7 +36,6 @@
             z-index: 10;
             opacity: 0;
             transition: opacity 0.2s;
-            /* Style cho nút nhỏ */
             --bs-btn-padding-y: .1rem;
             --bs-btn-padding-x: .3rem;
             --bs-btn-font-size: .65rem;
@@ -44,33 +43,39 @@
         .image-gallery-item:hover .delete-btn {
             opacity: 1;
         }
-
-        /* CSS NÚT XÓA TRONG BẢNG TỔNG HỢP */
         .delete-order-btn {
-            display: inline-block; /* Sửa lỗi từ <span><form></span> */
+            display: inline-block;
             margin-left: 5px;
             --bs-btn-padding-y: .1rem;
             --bs-btn-padding-x: .3rem;
             --bs-btn-font-size: .65rem;
         }
-
-        /* CSS CHO DISH LIST TRONG BẢNG MỚI */
         .summary-table .dish-list {
             font-size: 0.9em;
             color: #555;
             font-style: italic;
         }
-
-
-        /* CSS CHO MODAL LIGHTBOX */
         .modal-lg .carousel-item img {
             max-height: 90vh;
             object-fit: contain;
             width: 100%;
         }
+        .modal-body.qr-modal-body { /* Đổi tên class để tránh xung đột */
+            background-color: #fff; /* Nền trắng cho modal thanh toán */
+        }
         .modal-body {
             background-color: #333;
         }
+
+        .payment-checkbox {
+            transform: scale(1.4);
+            cursor: pointer;
+        }
+        .payment-checkbox:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
     </style>
 </head>
 <body class="pb-5">
@@ -151,9 +156,7 @@
                     </form>
                     <hr>
                     <p class="fw-bold">Ảnh đã upload hôm nay:</p>
-
                     <div class="image-gallery" th:if="${todaysImages != null && !#lists.isEmpty(todaysImages)}">
-
                         <div th:each="img, iterStat : ${todaysImages}" class="image-gallery-item">
                             <form th:action="@{/image/delete/{id}(id=${img.id})}" method="post"
                                   onsubmit="return confirm('Bạn có chắc muốn xóa ảnh này?');">
@@ -161,19 +164,58 @@
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
                             </form>
-
                             <img th:src="@{${img.filePath}}" alt="Ảnh món ăn"
                                  class="gallery-trigger"
                                  data-bs-toggle="modal"
                                  data-bs-target="#imageLightbox"
                                  th:data-bs-slide-to="${iterStat.index}">
                         </div>
-
                     </div>
                     <p th:if="${todaysImages == null || #lists.isEmpty(todaysImages)}" class="text-muted">Chưa có ảnh nào được upload hôm nay.</p>
                 </div>
             </div>
 
+            <div class="card" th:if="${loggedInUser.role == 'ADMIN'}">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-bank"></i> Cài Đặt Thanh Toán (Admin)
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/admin/update-bank-info}" method="post" id="bankInfoForm">
+                        <input type="hidden" name="bankBin" id="bankBinInput" th:value="${appState.bankBin}">
+                        <input type="hidden" name="bankName" id="bankNameInput" th:value="${appState.bankName}">
+
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label" for="bankSelector">Chọn Ngân Hàng</label>
+                                <select class="form-select" id="bankSelector" required>
+                                    <option value="" disabled th:selected="${appState.bankBin == null}">-- Chọn ngân hàng --</option>
+                                    <option value="970418|BIDV" th:selected="${appState.bankBin == '970418'}">BIDV</option>
+                                    <option value="970436|Vietcombank" th:selected="${appState.bankBin == '970436'}">Vietcombank</option>
+                                    <option value="970422|MB Bank" th:selected="${appState.bankBin == '970422'}">MB Bank</option>
+                                    <option value="970407|Techcombank" th:selected="${appState.bankBin == '970407'}">Techcombank</option>
+                                    <option value="970415|VietinBank" th:selected="${appState.bankBin == '970415'}">VietinBank</option>
+                                    <option value="970405|Agribank" th:selected="${appState.bankBin == '970405'}">Agribank</option>
+                                    <option value="970416|ACB" th:selected="${appState.bankBin == '970416'}">ACB</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Số Tài Khoản</label>
+                                <input type="text" name="bankAccountNo" class="form-control"
+                                       placeholder="Số tài khoản" th:value="${appState.bankAccountNo}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tên Chủ Tài Khoản</label>
+                                <input type="text" name="bankAccountName" class="form-control"
+                                       placeholder="NGUYEN VAN A" th:value="${appState.bankAccountName}" required>
+                            </div>
+                            <div class="col-12 text-end">
+                                <button type="submit" class="btn btn-primary">Lưu Cấu Hình</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
             <div class="card">
                 <div class="card-header bg-success text-white">2. Tạo Món Ăn Mới & Chọn Món</div>
                 <div class="card-body">
@@ -217,13 +259,11 @@
                                             th:disabled="${isOrderingLocked && loggedInUser.role != 'ADMIN'}">
                                         <i class="bi bi-cart-plus-fill"></i>
                                     </button>
-
                                     <button th:if="${loggedInUser.role == 'ADMIN'}" type="button" class="btn btn-sm btn-danger"
                                             th:data-bs-toggle="'modal'" th:data-bs-target="'#deleteDishModal-' + ${dish.id}">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </form>
-
                                 <div th:if="${loggedInUser.role == 'ADMIN'}" class="modal fade" th:id="'deleteDishModal-' + ${dish.id}" tabindex="-1">
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content">
@@ -291,10 +331,39 @@
                                 </button>
                             </form>
                         </div>
+
                     </div>
                 </div>
             </div>
 
+            <div class="card" th:if="${appState.isOrderingLocked}">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-credit-card-fill"></i> Thanh Toán Đơn Hàng Của Bạn
+                </div>
+                <div class="card-body text-center">
+                    <div th:if="${myPaymentQr == null && qrApiError == null && !#lists.isEmpty(userSummaries)}">
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle-fill"></i> Bạn đã xác nhận thanh toán.
+                        </div>
+                    </div>
+
+                    <div th:if="${appState.bankBin == null || appState.bankBin.isEmpty()}">
+                        <p class="text-muted">Admin chưa thiết lập thông tin thanh toán.</p>
+                    </div>
+
+                    <div th:if="${qrApiError != null}">
+                        <div class="alert alert-danger" th:text="${qrApiError}"></div>
+                    </div>
+
+                    <div class="d-grid" th:if="${myPaymentQr != null}">
+                        <button class="btn btn-primary" type="button"
+                                data-bs-toggle="modal" data-bs-target="#paymentModal">
+                            <i class="bi bi-qr-code-scan"></i> Quét Mã Thanh Toán
+                            (<span th:text="${#numbers.formatDecimal(myPaymentTotal, 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div class="card">
                 <div class="card-header bg-info-subtle text-dark">4. Quay Số May Mắn</div>
                 <div class="card-body text-center">
@@ -361,25 +430,19 @@
                             <td>
                                 <strong th:text="${entry.key}">Món ăn</strong>
                                 <div class="user-list">
-
                                     <th:block th:each="orderItem, iterStat : ${entry.value}">
-
                                         <span th:text="${orderItem.order.user.fullName} + ' (' + ${orderItem.quantity} + ')'">User (1)</span>
-
                                         <form th:if="${loggedInUser.role == 'ADMIN'}"
                                               th:action="@{/admin/order/delete/{id}(id=${orderItem.order.id})}"
                                               method="post" class="delete-order-btn"
                                               th:data-user-name="${orderItem.order.user.fullName}"
                                               onsubmit="return confirmOrderDelete(this);">
-
                                             <button type="submit" class="btn btn-danger">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
                                         </form>
-
                                         <span th:if="${!iterStat.last}">, </span>
                                     </th:block>
-
                                 </div>
                             </td>
                             <td class="text-center" th:text="${totalQuantities[entry.key]}">0</td>
@@ -401,19 +464,19 @@
                     <span>Tổng Hợp (Theo Người Đặt)</span>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-bordered mb-0">
+                    <table class="table table-bordered table-hover mb-0 align-middle">
                         <thead class="table-dark">
                         <tr>
                             <th>Người đặt món</th>
-                            <th>Tổng số lượng</th>
+                            <th class="text-center">Tổng SL</th>
                             <th>Thành tiền</th>
+                            <th class="text-center" style="width: 100px;">Thanh toán</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:if="${userSummaries == null || #lists.isEmpty(userSummaries)}">
-                            <td colspan="3" class="text-center text-muted">Chưa có ai hoàn tất đặt cơm.</td>
+                            <td colspan="4" class="text-center text-muted">Chưa có ai hoàn tất đặt cơm.</td>
                         </tr>
-
                         <tr th:each="summary : ${userSummaries}">
                             <td>
                                 <strong th:text="${summary.user.fullName}">Tên Người Dùng</strong>
@@ -425,6 +488,20 @@
                             </td>
                             <td class="text-center" th:text="${summary.totalQuantity}">0</td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(summary.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                            <td class="text-center">
+                                <form th:if="${loggedInUser.id == summary.user.id}"
+                                      th:action="@{/order/toggle-payment}" method="POST">
+                                    <input type="checkbox"
+                                           class="form-check-input payment-checkbox"
+                                           th:checked="${summary.isPaid}"
+                                           onchange="this.form.submit()">
+                                </form>
+                                <input th:if="${loggedInUser.id != summary.user.id}"
+                                       type="checkbox"
+                                       class="form-check-input payment-checkbox"
+                                       th:checked="${summary.isPaid}"
+                                       disabled>
+                            </td>
                         </tr>
                         </tbody>
                         <tfoot th:if="${userSummaries != null && !#lists.isEmpty(userSummaries)}">
@@ -432,11 +509,13 @@
                             <td class="text-end">TỔNG CỘNG</td>
                             <td class="text-center" th:text="${summaryTotalQuantity}">0</td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(summaryTotalAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'">0 đ</td>
+                            <td></td>
                         </tr>
                         </tfoot>
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
@@ -445,10 +524,8 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="background: none; border: none;">
             <div class="modal-body p-0">
-
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         style="position: absolute; top: 10px; right: 10px; z-index: 2000; font-size: 1.5rem;"></button>
-
                 <div id="imageCarousel" class="carousel slide" data-bs-interval="false">
                     <div class="carousel-indicators">
                         <button th:each="img, iterStat : ${todaysImages}"
@@ -456,7 +533,6 @@
                                 th:data-bs-slide-to="${iterStat.index}"
                                 th:classappend="${iterStat.index == 0} ? 'active' : ''"></button>
                     </div>
-
                     <div class="carousel-inner">
                         <div th:each="img, iterStat : ${todaysImages}"
                              class="carousel-item"
@@ -464,7 +540,6 @@
                             <img th:src="@{${img.filePath}}" class="d-block w-100" alt="Ảnh món ăn">
                         </div>
                     </div>
-
                     <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Previous</span>
@@ -479,7 +554,36 @@
     </div>
 </div>
 
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalLabel">
+                    <i class="bi bi-qr-code-scan"></i> Thanh toán đơn hàng
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body qr-modal-body text-center">
+                <div th:if="${qrApiError != null}" class="alert alert-danger" th:text="${qrApiError}"></div>
 
+                <div th:if="${myPaymentQr != null}">
+                    <p class="mb-2">Quét mã QR dưới đây để thanh toán:</p>
+                    <h4 class="text-danger fw-bold" th:text="${#numbers.formatDecimal(myPaymentTotal, 0, 'COMMA', 0, 'POINT')} + ' đ'">50,000 đ</h4>
+                    <img th:src="${myPaymentQr}" class="img-fluid" alt="QR Code Thanh toan"/>
+
+                    <hr class="my-3">
+                    <p class="mb-1"><strong>Ngân hàng:</strong> <span th:text="${appState.bankName}"></span></p>
+                    <p class="mb-1"><strong>Số tài khoản:</strong> <span th:text="${appState.bankAccountNo}"></span></p>
+                    <p class="mb-1"><strong>Chủ tài khoản:</strong> <span th:text="${appState.bankAccountName}"></span></p>
+                    <p class="mb-1"><strong>Nội dung:</strong> <span th:text="${myPaymentDescription}"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script th:inline="javascript">
     // Tự động ẩn các thông báo sau 5 giây
@@ -492,32 +596,45 @@
     }, 5000);
 
     // JAVASCRIPT CHO LIGHTBOX ẢNH
+    // ... (Không thay đổi)
     const imageCarouselElement = document.getElementById('imageCarousel');
     if (imageCarouselElement) {
-        // Khởi tạo carousel
         const carousel = new bootstrap.Carousel(imageCarouselElement, {
-            interval: false, // Không tự động chạy
-            wrap: true       // Lướt vòng
+            interval: false,
+            wrap: true
         });
-
-        // Lắng nghe sự kiện click trên tất cả các ảnh trong gallery
         const galleryTriggers = document.querySelectorAll('.gallery-trigger');
         galleryTriggers.forEach(trigger => {
             trigger.addEventListener('click', event => {
                 const slideIndex = event.target.getAttribute('data-bs-slide-to');
-                // Ra lệnh cho carousel nhảy tới slide được click
                 carousel.to(parseInt(slideIndex, 10));
             });
         });
     }
 
     // JAVASCRIPT ĐỂ XÁC NHẬN XÓA ĐƠN HÀNG (AN TOÀN)
+    // ... (Không thay đổi)
     function confirmOrderDelete(formElement) {
-        // Lấy tên từ thuộc tính 'data-user-name'
         const userName = formElement.dataset.userName || 'người dùng này';
         const message = `Bạn có chắc muốn xóa toàn bộ đơn hàng hôm nay của ${userName}?`;
         return confirm(message);
     }
+
+    // *** BẮT ĐẦU JAVASCRIPT MỚI CHO FORM ADMIN BANK ***
+    const bankSelector = document.getElementById('bankSelector');
+    if (bankSelector) {
+        bankSelector.addEventListener('change', function() {
+            const selectedValue = this.value;
+            if (selectedValue) {
+                const parts = selectedValue.split('|');
+                const bin = parts[0];
+                const name = parts[1];
+                document.getElementById('bankBinInput').value = bin;
+                document.getElementById('bankNameInput').value = name;
+            }
+        });
+    }
+    // *** KẾT THÚC JAVASCRIPT MỚI ***
 </script>
 
 </body>

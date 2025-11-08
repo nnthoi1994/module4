@@ -36,9 +36,12 @@
         <div class="accordion" id="historyAccordion">
             <div class="accordion-item" th:each="entry, iterStat : ${groupedHistory}">
                 <h2 class="accordion-header">
+
                     <button class="accordion-button collapsed" type="button"
-                            th:attr="data-bs-target='#collapse' + ${iterStat.index}"
-                            th:attrappend="aria-controls='collapse' + ${iterStat.index}">
+                            data-bs-toggle="collapse"
+                            th:data-bs-target="'#collapse' + ${iterStat.index}"
+                            th:aria-controls="'collapse' + ${iterStat.index}">
+
                         <strong>Ngày:</strong>&nbsp;<span th:text="${entry.key}"></span>
                         &nbsp;-&nbsp;<span th:text="${#lists.size(entry.value)} + ' đơn hàng'"></span>
                     </button>

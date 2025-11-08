@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-R">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo mã VietQR</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; max-width: 500px; margin: auto; }
+        .container { border: 1px solid #ccc; padding: 25px; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select {
+            width: 95%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background-color: #0056b3; }
+        #qrResult { margin-top: 20px; text-align: center; }
+        #qrResult img { max-width: 100%; border: 1p<!DOCTYPE html>
+        <html lang="vi">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Thanh toán đơn hàng</title>
+        <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-radius: 10px; }
+            .form-group { margin-bottom: 15px; }
+            label { display: block; font-weight: 600; margin-bottom: 5px; }
+            input[type="text"], input[type="number"] { width: 95%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+            button { width: 100%; padding: 12px; background-color: #007aff; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+            button:disabled { background-color: #aaa; }
+            #qr-container { text-align: center; margin-top: 20px; }
+            #qr-image { max-width: 300px; border: 1px solid #eee; }
+            #status-message { text-align: center; font-size: 1.2em; font-weight: bold; margin-top: 15px; }
+            .status-pending { color: #f39c12; }
+            .status-paid { color: #2ecc71; }
+            .status-error { color: #e74c3c; }
+    </style>
+</head>
+<body>
+
+<h2>Tạo đơn hàng & Mã QR</h2>
+<form id="paymentForm">
+    <div class="form-group">
+        <label for="customerName">Tên của bạn (Để nhận diện):</label>
+        <input type="text" id="customerName" value="NGUYEN VAN A" required>
+    </div>
+    <div class="form-group">
+        <label for="amount">Số tiền:</label>
+        <input type="number" id="amount" value="10000" required>
+    </div>
+    <button type="submit" id="generateBtn">Tạo mã QR</button>
+</form>
+
+<div id="qr-container" style="display:none;">
+    <p>Quét mã để thanh toán. Nội dung sẽ tự động điền.</p>
+    <img id="qr-image" src="" alt="Mã VietQR">
+</div>
+
+<div id="status-message"></div>
+
+<script>
+    const form = document.getElementById('paymentForm');
+    const generateBtn = document.getElementById('generateBtn');
+    const qrContainer = document.getElementById('qr-container');
+    const qrImage = document.getElementById('qr-image');
+    const statusMessage = document.getElementById('status-message');
+
+    let pollingInterval; // Biến để giữ bộ đếm thời gian
+    let currentTransactionId;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Dọn dẹp trạng thái cũ
+        if (pollingInterval) clearInterval(pollingInterval);
+        qrContainer.style.display = 'none';
+        statusMessage.textContent = 'Đang tạo mã QR...';
+        statusMessage.className = 'status-pending';
+        generateBtn.disabled = true;
+
+        const data = {
+            customerName: document.getElementById('customerName').value,
+            amount: parseInt(document.getElementById('amount').value)
+        };
+
+        try {
+            // 1. Gọi API /generate-qr
+            const response = await fetch('/api/generate-qr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                throw new Error('Lỗi khi tạo mã. Vui lòng thử lại.');
+            }
+
+            const result = await response.json();
+
+            // 2. Hiển thị QR và lưu transactionId
+            qrImage.src = result.qrImage;
+            qrContainer.style.display = 'block';
+            currentTransactionId = result.transactionId;
+
+            // 3. Bắt đầu "Hỏi thăm" (Polling)
+            statusMessage.textContent = 'Chờ thanh toán... (Mã: ' + currentTransactionId + ')';
+            startPolling(currentTransactionId);
+
+        } catch (error) {
+            statusMessage.textContent = error.message;
+            statusMessage.className = 'status-error';
+            generateBtn.disabled = false;
+        }
+    });
+
+    function startPolling(transactionId) {
+        pollingInterval = setInterval(async () => {
+            try {
+                // 4. Gọi API /check-status
+                const res = await fetch('/api/check-status/' + transactionId);
+                if (!res.ok) return; // Bỏ qua nếu lỗi mạng
+
+                const result = await res.json();
+
+                // 5. Kiểm tra trạng thái
+                if (result.status === 'PAID') {
+                    // THÀNH CÔNG! Dừng lại và thông báo
+                    clearInterval(pollingInterval); // Dừng hỏi
+                    statusMessage.textContent = '✅ Đã thanh toán thành công!';
+                    statusMessage.className = 'status-paid';
+                    generateBtn.disabled = false; // Cho phép tạo đơn mới
+
+                } else if (result.status === 'PENDING') {
+                    // Vẫn đang chờ, không làm gì cả
+                } else {
+                    // Giao dịch không tìm thấy hoặc lỗi
+                    clearInterval(pollingInterval);
+                    statusMessage.textContent = 'Lỗi: Không tìm thấy giao dịch.';
+                    statusMessage.className = 'status-error';
+                    generateBtn.disabled = false;
+                }
+            } catch (error) {
+                // Lỗi mạng, cứ tiếp tục thử lại ở lần sau
+                console.warn('Polling error:', error);
+            }
+        }, 3000); // Hỏi mỗi 3 giây
+    }
+</script>
+</body>
+</html>x solid #eee; }
+        #error-message { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Tạo mã thanh toán VietQR</h2>
+
+    <form id="qrForm">
+        <div class="form-group">
+            <label for="bankBin">Ngân hàng:</label>
+            <select id="bankBin" required>
+                <option value="970418">BIDV</option>
+                <option value="970436">Vietcombank</option>
+                <option value="970422">MB Bank</option>
+                <option value="970407">Techcombank</option>
+                <option value="970415">VietinBank</option>
+                <option value="970405">Agribank</option>
+                <option value="970416">ACB</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="accountNumber">Số tài khoản:</label>
+            <input type="text" id="accountNumber" value="123123123" required>
+        </div>
+
+        <div class="form-group">
+            <label for="amount">Số tiền:</label>
+            <input type="number" id="amount" value="10000" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Nội dung:</label>
+            <input type="text" id="description" value="Cảm ơn quý khách" required>
+        </div>
+
+        <button type="submit">Tạo mã QR</button>
+    </form>
+
+    <div id="qrResult"></div>
+    <div id="error-message"></div>
+</div>
+
+<script>
+    // Bắt sự kiện (event) 'submit' của form
+    document.getElementById('qrForm').addEventListener('submit', async function(event) {
+        // Ngăn form gửi theo cách truyền thống
+        event.preventDefault();
+
+        // Xóa kết quả cũ
+        document.getElementById('qrResult').innerHTML = '';
+        document.getElementById('error-message').innerText = '';
+
+        // 1. Lấy dữ liệu (data) từ form
+        const data = {
+            bin: document.getElementById('bankBin').value,
+            accountNumber: document.getElementById('accountNumber').value,
+            amount: parseInt(document.getElementById('amount').value),
+            description: document.getElementById('description').value
+        };
+
+        try {
+            // 2. Gửi request (yêu cầu) lên Spring Boot backend
+            const response = await fetch('/api/generate-qr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            // 3. Xử lý response (phản hồi)
+            if (response.ok) {
+                const result = await response.json();
+
+                // Hiển thị ảnh QR
+                const qrImage = document.createElement('img');
+                qrImage.src = result.qrImage; // Đây là chuỗi Base64
+                document.getElementById('qrResult').appendChild(qrImage);
+
+            } else {
+                // Hiển thị lỗi
+                const errorData = await response.json();
+                document.getElementById('error-message').innerText = 'Lỗi: ' + (errorData.error || 'Không rõ lỗi');
+            }
+        } catch (error) {
+            document.getElementById('error-message').innerText = 'Lỗi kết nối: ' + error.message;
+        }
+    });
+</script>
+
+</body>
+</html>

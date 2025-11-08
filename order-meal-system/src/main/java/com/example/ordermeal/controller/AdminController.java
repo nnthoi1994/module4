@@ -1,21 +1,26 @@
 package com.example.ordermeal.controller;
 
+import com.example.ordermeal.entity.AppState;
 import com.example.ordermeal.entity.Order;
 import com.example.ordermeal.entity.User;
 import com.example.ordermeal.service.AppStateService;
 import com.example.ordermeal.service.EmailService;
 import com.example.ordermeal.service.OrderService;
+import com.example.ordermeal.service.VietQRService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -24,10 +29,27 @@ public class AdminController {
     private final AppStateService appStateService;
     private final OrderService orderService;
     private final EmailService emailService;
+    private final VietQRService vietQRService;
 
     private boolean isAdmin(HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         return loggedInUser != null && "ADMIN".equals(loggedInUser.getRole());
+    }
+
+    @PostMapping("/update-bank-info")
+    public String updateBankInfo(@RequestParam String bankBin,
+                                 @RequestParam String bankAccountNo,
+                                 @RequestParam String bankAccountName,
+                                 @RequestParam String bankName,
+                                 HttpSession session,
+                                 RedirectAttributes redirectAttributes) {
+        if (!isAdmin(session)) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Không có quyền.");
+            return "redirect:/";
+        }
+        appStateService.updateBankInfo(bankBin, bankAccountNo, bankAccountName, bankName);
+        redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật thông tin thanh toán!");
+        return "redirect:/";
     }
 
     @PostMapping("/toggle-lock")
@@ -35,10 +57,11 @@ public class AdminController {
         if (!isAdmin(session)) {
             return "redirect:/";
         }
-
         boolean isCurrentlyLocked = appStateService.isOrderingLocked();
         appStateService.setOrderingLocked(!isCurrentlyLocked);
-
+        if (isCurrentlyLocked) {
+            appStateService.resetPickerState();
+        }
         String message = isCurrentlyLocked ? "Đã MỞ KHÓA chức năng đặt cơm." : "Đã KHÓA chức năng đặt cơm.";
         redirectAttributes.addFlashAttribute("successMessage", message);
         return "redirect:/";
@@ -49,8 +72,8 @@ public class AdminController {
         if (!isAdmin(session)) {
             return "redirect:/";
         }
-
         orderService.resetTodaysOrders();
+        appStateService.resetPickerState();
         redirectAttributes.addFlashAttribute("successMessage", "Đã reset toàn bộ đơn hàng hôm nay.");
         return "redirect:/";
     }
@@ -61,49 +84,103 @@ public class AdminController {
             return "redirect:/";
         }
 
-        List<Order> completedOrders = orderService.getTodaysCompletedOrders();
-        if (completedOrders.isEmpty()) {
-            redirectAttributes.addFlashAttribute("infoMessage", "Không có đơn hàng nào để gửi email thanh toán.");
+        AppState appState = appStateService.getAppState();
+        if (appState.getBankBin() == null || appState.getBankBin().isEmpty() || appState.getBankAccountNo() == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng 'Cài Đặt Thanh Toán (Admin)' trước khi gửi email.");
+            return "redirect:/";
+        }
+
+        List<Order> unpaidOrders = orderService.getTodaysCompletedAndUnpaidOrders();
+
+        if (unpaidOrders.isEmpty()) {
+            redirectAttributes.addFlashAttribute("infoMessage", "Không có đơn hàng nào CHƯA THANH TOÁN để gửi email.");
             return "redirect:/";
         }
 
         NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
 
-        for (Order order : completedOrders) {
-            User user = order.getUser();
-            String totalAmountFormatted = currencyFormatter.format(order.getTotalAmount());
+        List<User> usersToSend = unpaidOrders.stream()
+                .map(Order::getUser)
+                .distinct()
+                .collect(Collectors.toList());
 
+        for (User user : usersToSend) {
+            List<Order> userUnpaidOrders = unpaidOrders.stream()
+                    .filter(order -> order.getUser().getId().equals(user.getId()))
+                    .collect(Collectors.toList());
+
+            BigDecimal totalUnpaidAmount = userUnpaidOrders.stream()
+                    .map(Order::getTotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            String totalAmountFormatted = currencyFormatter.format(totalUnpaidAmount);
+            int amountInt = totalUnpaidAmount.intValue();
+            String description = user.getFullName() + " thanh toan " + amountInt;
+
+            String qrCodeBase64 = null;
+            try {
+                qrCodeBase64 = vietQRService.generateQRCode(
+                        appState.getBankBin(),
+                        appState.getBankAccountNo(),
+                        appState.getBankAccountName(),
+                        amountInt,
+                        description
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.err.println("❌ Lỗi tạo QR cho email của user: " + user.getUsername() + " - " + e.getMessage());
+            }
+
+            // Xây dựng nội dung email
             String emailContent = String.format(
                     "<p>Chào %s,</p>" +
                             "<p>Hệ thống đặt cơm xin thông báo chi phí bữa trưa hôm nay của bạn.</p>" +
-                            "<p><strong>Tổng số tiền cần thanh toán: %s</strong></p>" +
-                            "<p>Cảm ơn bạn đã sử dụng dịch vụ!</p>",
+                            "<p><strong>Tổng số tiền cần thanh toán: %s</strong></p>",
                     user.getFullName(),
                     totalAmountFormatted
             );
 
-            emailService.sendEmail(user.getEmail(), "Thông báo thanh toán tiền cơm", emailContent);
+            if (qrCodeBase64 != null) {
+                // *** BẮT ĐẦU SỬA ĐỔI ***
+                // Thay thế chuỗi Base64 bằng tham chiếu CID (Content-ID)
+                emailContent += String.format(
+                        "<p>Bạn có thể quét mã QR dưới đây để thanh toán:</p>" +
+                                "<div style='text-align:center;'>" +
+                                //   Đây là thay đổi quan trọng: src='cid:qrCodeImage'
+                                "  <img src='cid:qrCodeImage' alt='Mã QR Thanh toán' style='width:250px; height:auto;'/>" +
+                                "  <p><strong>Nội dung:</strong> %s</p>" +
+                                "</div>",
+                        description
+                );
+                // *** KẾT THÚC SỬA ĐỔI ***
+            } else {
+                emailContent += "<p>Không thể tạo mã QR, vui lòng chuyển khoản thủ công.</p>";
+            }
+
+            emailContent += "<p>Cảm ơn bạn đã sử dụng dịch vụ!</p>";
+
+            // *** BẮT ĐẦU SỬA ĐỔI ***
+            // Gọi hàm sendEmail mới, truyền cả chuỗi Base64 để nó xử lý
+            emailService.sendEmail(user.getEmail(), "Thông báo thanh toán tiền cơm", emailContent, qrCodeBase64);
+            // *** KẾT THÚC SỬA ĐỔI ***
         }
 
-        redirectAttributes.addFlashAttribute("successMessage", "Đã gửi email thanh toán đến " + completedOrders.size() + " người dùng.");
+        redirectAttributes.addFlashAttribute("successMessage", "Đã gửi email thanh toán đến " + usersToSend.size() + " người dùng chưa thanh toán.");
         return "redirect:/";
     }
 
-    // *** ENDPOINT MỚI ĐỂ ADMIN XÓA ĐƠN HÀNG ***
     @PostMapping("/order/delete/{orderId}")
     public String deleteCompletedOrder(@PathVariable Long orderId, HttpSession session, RedirectAttributes redirectAttributes) {
         if (!isAdmin(session)) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thực hiện hành động này.");
             return "redirect:/";
         }
-
         try {
             orderService.deleteCompletedOrderById(orderId);
             redirectAttributes.addFlashAttribute("successMessage", "Đã xóa đơn hàng thành công.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi xóa đơn hàng: " + e.getMessage());
         }
-
         return "redirect:/";
     }
 }

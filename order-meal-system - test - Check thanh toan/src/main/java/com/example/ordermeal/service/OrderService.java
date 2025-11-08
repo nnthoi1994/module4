@@ -80,6 +80,11 @@ public class OrderService {
         updateCartTotal(cart);
 
         cart.setCompleted(true);
+        List<Order> otherCompletedOrders = orderRepository.findAllByUserIdAndOrderDateAndIsCompleted(userId, LocalDate.now(), true);
+        if (!otherCompletedOrders.isEmpty()) {
+            cart.setPaid(otherCompletedOrders.get(0).isPaid());
+        }
+
         orderRepository.save(cart);
     }
 
@@ -91,6 +96,13 @@ public class OrderService {
     public List<Order> getTodaysCompletedOrders() {
         return orderRepository.findByOrderDateAndIsCompleted(LocalDate.now(), true);
     }
+
+    // *** BẮT ĐẦU THÊM MỚI ***
+    // Lấy các đơn hàng hôm nay ĐÃ HOÀN TẤT và CHƯA THANH TOÁN
+    public List<Order> getTodaysCompletedAndUnpaidOrders() {
+        return orderRepository.findByOrderDateAndIsCompletedAndIsPaid(LocalDate.now(), true, false);
+    }
+    // *** KẾT THÚC THÊM MỚI ***
 
     public List<Order> getPersonalHistory(Long userId) {
         return orderRepository.findByUserIdAndIsCompletedOrderByOrderDateDesc(userId, true);
@@ -105,12 +117,22 @@ public class OrderService {
         orderRepository.deleteAll(todaysOrders);
     }
 
-    // *** HÀM MỚI ĐỂ XÓA ĐƠN HÀNG HOÀN TẤT (ADMIN) ***
     @Transactional
     public void deleteCompletedOrderById(Long orderId) {
-        // Chúng ta xóa trực tiếp vì Admin đã xác nhận
-        // Thao tác này sẽ tự động xóa các OrderItems liên quan
         orderRepository.deleteById(orderId);
+    }
+
+    @Transactional
+    public void togglePaymentStatus(Long userId, LocalDate date) {
+        List<Order> todaysOrders = orderRepository.findAllByUserIdAndOrderDateAndIsCompleted(userId, date, true);
+
+        if (!todaysOrders.isEmpty()) {
+            boolean newStatus = !todaysOrders.get(0).isPaid();
+            for (Order order : todaysOrders) {
+                order.setPaid(newStatus);
+            }
+            orderRepository.saveAll(todaysOrders);
+        }
     }
 
 

@@ -2,6 +2,8 @@ package com.example.ordermeal.controller;
 
 import com.example.ordermeal.entity.*;
 import com.example.ordermeal.service.*;
+import com.example.ordermeal.service.VietQRService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -12,6 +14,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -19,11 +22,16 @@ import java.util.stream.Collectors;
 @RequestMapping("/")
 @RequiredArgsConstructor
 public class HomeController {
+
+    public record UserSummary(User user, List<OrderItem> mergedItems, int totalQuantity, BigDecimal totalAmount, boolean isPaid) {}
+
     private final IUserService userService;
     private final ImageService imageService;
     private final DishService dishService;
     private final OrderService orderService;
     private final AppStateService appStateService;
+    private final ObjectMapper objectMapper;
+    private final VietQRService vietQRService;
 
     @ModelAttribute
     public void addUserToModel(Model model, HttpSession session) {
@@ -43,16 +51,23 @@ public class HomeController {
         // Add basic data
         model.addAttribute("todaysImages", imageService.getTodaysImages());
         model.addAttribute("dishes", dishService.findAll());
-        model.addAttribute("isOrderingLocked", appStateService.isOrderingLocked());
+
+        // LẤY TRẠNG THÁI (BAO GỒM BANK INFO)
+        AppState appState = appStateService.getAppState();
+        model.addAttribute("appState", appState);
+        model.addAttribute("isOrderingLocked", appState.isOrderingLocked());
+        model.addAttribute("selectedUsers", appStateService.getSelectedUsers());
 
         // Get cart
         Order cart = orderService.getOrCreateCart(loggedInUser);
         model.addAttribute("cart", cart);
 
+        // *** XÓA LOGIC QR CŨ KHỎI ĐÂY ***
+
         // Get today's completed orders
         List<Order> todaysCompletedOrders = orderService.getTodaysCompletedOrders();
 
-        // *** ĐÂY LÀ PHẦN SỬA LỖI QUAN TRỌNG NHẤT ***
+        // Process summary data
         if (todaysCompletedOrders != null && !todaysCompletedOrders.isEmpty()) {
             List<OrderItem> allItems = todaysCompletedOrders.stream()
                     .filter(order -> order.getItems() != null)
@@ -78,32 +93,128 @@ public class HomeController {
                         ));
 
                 BigDecimal grandTotal = subtotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                int summaryTotalQuantity = allItems.stream().mapToInt(OrderItem::getQuantity).sum();
 
-                // Thêm data vào model khi CÓ đơn hàng
+
                 model.addAttribute("groupedItems", groupedItems);
                 model.addAttribute("totalQuantities", totalQuantities);
                 model.addAttribute("subtotals", subtotals);
                 model.addAttribute("grandTotal", grandTotal);
+                model.addAttribute("summaryTotalAmount", grandTotal);
+                model.addAttribute("summaryTotalQuantity", summaryTotalQuantity);
+
             } else {
-                // Thêm data rỗng vào model khi CÓ đơn hàng nhưng allItems rỗng
                 model.addAttribute("groupedItems", Collections.emptyMap());
                 model.addAttribute("totalQuantities", Collections.emptyMap());
                 model.addAttribute("subtotals", Collections.emptyMap());
                 model.addAttribute("grandTotal", BigDecimal.ZERO);
+                model.addAttribute("summaryTotalAmount", BigDecimal.ZERO);
+                model.addAttribute("summaryTotalQuantity", 0);
             }
+
+            // Gộp nhóm theo User
+            Map<User, List<Order>> ordersByUser = todaysCompletedOrders.stream()
+                    .collect(Collectors.groupingBy(Order::getUser));
+
+            List<UserSummary> userSummaries = new ArrayList<>();
+            for (Map.Entry<User, List<Order>> entry : ordersByUser.entrySet()) {
+                User user = entry.getKey();
+                List<Order> userOrders = entry.getValue();
+
+                List<OrderItem> allUserItems = userOrders.stream()
+                        .flatMap(order -> order.getItems().stream())
+                        .collect(Collectors.toList());
+
+                Map<Dish, Integer> mergedItemsMap = allUserItems.stream()
+                        .collect(Collectors.groupingBy(
+                                OrderItem::getDish,
+                                Collectors.summingInt(OrderItem::getQuantity)
+                        ));
+
+                List<OrderItem> mergedItemsList = new ArrayList<>();
+                for (Map.Entry<Dish, Integer> itemEntry : mergedItemsMap.entrySet()) {
+                    OrderItem tempItem = new OrderItem();
+                    tempItem.setDish(itemEntry.getKey());
+                    tempItem.setQuantity(itemEntry.getValue());
+                    mergedItemsList.add(tempItem);
+                }
+
+                int userTotalQuantity = allUserItems.stream()
+                        .mapToInt(OrderItem::getQuantity)
+                        .sum();
+
+                BigDecimal userTotalAmount = userOrders.stream()
+                        .map(Order::getTotalAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                boolean isPaid = userOrders.get(0).isPaid();
+
+                userSummaries.add(new UserSummary(user, mergedItemsList, userTotalQuantity, userTotalAmount, isPaid));
+            }
+            model.addAttribute("userSummaries", userSummaries);
+
+            // *** BẮT ĐẦU LOGIC TẠO QR CHO USER THANH TOÁN ***
+            String myPaymentQr = null;
+            String myPaymentDescription = null;
+            BigDecimal myPaymentTotal = BigDecimal.ZERO;
+            String qrApiError = null;
+
+            // Chỉ tạo QR nếu: 1. Đã khóa đơn VÀ 2. Admin đã setup bank
+            if (appState.isOrderingLocked() && appState.getBankBin() != null && !appState.getBankBin().isEmpty()) {
+                // Tìm summary của user đang đăng nhập
+                Optional<UserSummary> mySummary = userSummaries.stream()
+                        .filter(s -> s.user().getId().equals(loggedInUser.getId()))
+                        .findFirst();
+
+                // Nếu user có đơn hàng VÀ chưa thanh toán
+                if (mySummary.isPresent() && !mySummary.get().isPaid()) {
+                    UserSummary summary = mySummary.get();
+                    myPaymentTotal = summary.totalAmount();
+                    int amountInt = myPaymentTotal.intValue();
+                    myPaymentDescription = loggedInUser.getFullName() + " thanh toan " + amountInt;
+
+                    try {
+                        myPaymentQr = vietQRService.generateQRCode(
+                                appState.getBankBin(),
+                                appState.getBankAccountNo(),
+                                appState.getBankAccountName(),
+                                amountInt,
+                                myPaymentDescription
+                        );
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        qrApiError = "Lỗi tạo mã QR: " + e.getMessage();
+                    }
+                }
+            }
+            model.addAttribute("myPaymentQr", myPaymentQr);
+            model.addAttribute("myPaymentTotal", myPaymentTotal);
+            model.addAttribute("myPaymentDescription", myPaymentDescription);
+            model.addAttribute("qrApiError", qrApiError); // Lỗi API (nếu có)
+            // *** KẾT THÚC LOGIC TẠO QR ***
+
+
         } else {
-            // Thêm data rỗng vào model khi KHÔNG CÓ đơn hàng
-            // Đây là phần quan trọng nhất để fix lỗi
+            // Trường hợp không có đơn hàng nào cả
             model.addAttribute("groupedItems", Collections.emptyMap());
             model.addAttribute("totalQuantities", Collections.emptyMap());
             model.addAttribute("subtotals", Collections.emptyMap());
             model.addAttribute("grandTotal", BigDecimal.ZERO);
+            model.addAttribute("summaryTotalAmount", BigDecimal.ZERO);
+            model.addAttribute("summaryTotalQuantity", 0);
+            model.addAttribute("userSummaries", Collections.emptyList());
+
+            // Thêm các biến QR rỗng
+            model.addAttribute("myPaymentQr", null);
+            model.addAttribute("myPaymentTotal", BigDecimal.ZERO);
+            model.addAttribute("myPaymentDescription", null);
+            model.addAttribute("qrApiError", null);
         }
-        // *** KẾT THÚC PHẦN SỬA LỖI ***
 
         return "home";
     }
 
+    // ... (Các phương thức còn lại không thay đổi) ...
     @PostMapping("/upload")
     public String handleImageUpload(@RequestParam("images") List<MultipartFile> files,
                                     RedirectAttributes redirectAttributes, HttpSession session) {
@@ -234,12 +345,35 @@ public class HomeController {
         return "redirect:/";
     }
 
+    @PostMapping("/order/toggle-payment")
+    public String togglePayment(HttpSession session, RedirectAttributes redirectAttributes) {
+        User loggedInUser = (User) session.getAttribute("loggedInUser");
+        if (loggedInUser == null) {
+            return "redirect:/login";
+        }
+
+        try {
+            orderService.togglePaymentStatus(loggedInUser.getId(), LocalDate.now());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi cập nhật thanh toán.");
+        }
+        return "redirect:/";
+    }
+
     @PostMapping("/picker/random")
     public String pickRandomUsers(RedirectAttributes redirectAttributes, HttpSession session) {
-        if (session.getAttribute("loggedInUser") == null) return "redirect:/login";
+        User loggedInUser = (User) session.getAttribute("loggedInUser");
+        if (loggedInUser == null) return "redirect:/login";
 
-        if (!appStateService.isOrderingLocked()) {
+        AppState appState = appStateService.getAppState();
+
+        if (!appState.isOrderingLocked()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Chức năng này chỉ mở sau khi Admin 'Kết thúc chọn món'.");
+            return "redirect:/";
+        }
+
+        if (appState.isHasBeenSpun() && !"ADMIN".equals(loggedInUser.getRole())) {
+            redirectAttributes.addFlashAttribute("infoMessage", "Đã có người quay số rồi. Chỉ Admin mới được quay lại.");
             return "redirect:/";
         }
 
@@ -247,8 +381,10 @@ public class HomeController {
         if (selectedUsers.isEmpty()) {
             redirectAttributes.addFlashAttribute("infoMessage", "Không có đủ người dùng nam hợp lệ (hoặc chưa ai đặt cơm) để chọn.");
         } else {
-            redirectAttributes.addFlashAttribute("randomPickerResult", selectedUsers);
-            redirectAttributes.addFlashAttribute("successMessage", "Đã có kết quả! Chúc mừng người may mắn!");
+            appStateService.recordSpin(loggedInUser, selectedUsers);
+
+            String successMsg = "ADMIN".equals(loggedInUser.getRole()) ? "Admin đã quay lại thành công!" : "Bạn đã quay số thành công!";
+            redirectAttributes.addFlashAttribute("successMessage", successMsg);
         }
         return "redirect:/";
     }
