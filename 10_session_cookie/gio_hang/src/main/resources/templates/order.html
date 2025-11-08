@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .cart-container { background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; }
+        .progress-bar { display: flex; margin-bottom: 20px; }
+        .progress-step { flex: 1; text-align: center; padding: 10px; background: #eee; color: #777; position: relative; }
+        .progress-step.active { background: #007bff; color: white; font-weight: bold; }
+        .progress-step:not(:last-child)::after { content: ''; position: absolute; right: -15px; top: 0; z-index: 1; border-top: 25px solid transparent; border-bottom: 25px solid transparent; border-left: 15px solid; }
+        .progress-step.active::after { border-left-color: #007bff; }
+        .progress-step:not(.active)::after { border-left-color: #eee; }
+        .order-summary { padding: 20px; background: #f9f9f9; border-radius: 5px; }
+        .total-payment { text-align: right; font-size: 1.5em; color: #d9534f; font-weight: bold; }
+        .payment-form { margin-top: 20px; }
+        .payment-btn {
+            background: #d9534f; color: white; padding: 15px 25px;
+            text-decoration: none; border-radius: 5px; font-weight: bold;
+            font-size: 1.2em; display: inline-block; margin-top: 10px;
+            border: none; cursor: pointer;
+        }
+        .payment-btn:hover { background: #c9302c; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="progress-bar">
+        <div class="progress-step active">01. Giỏ hàng</div>
+        <div class="progress-step active">02. Đơn hàng</div>
+        <div class="progress-step">03. Thanh toán</div>
+    </div>
+
+    <div class="cart-container">
+        <h1>XÁC NHẬN ĐƠN HÀNG (BƯỚC 2)</h1>
+
+        <div class="order-summary">
+            <h3>Thông tin người nhận (Demo)</h3>
+            <p>Nguyễn Văn A - 0909123456</p>
+            <p>123 Đường ABC, Phường X, Quận Y, TP. HCM</p>
+        </div>
+
+        <div class="order-summary" style="margin-top: 20px;">
+            <h3>Chi tiết đơn hàng</h3>
+            <ul>
+                <li th:each="entry : ${cart.products}">
+                    <span th:text="${entry.getKey().name}">Sản phẩm</span> x
+                    <span th:text="${entry.getValue()}">SL</span>
+                </li>
+            </ul>
+            <hr>
+            <div class="total-payment">
+                Thanh toán:
+                <span th:text="${#numbers.formatDecimal(cart.countTotalPayment(), 0, 'COMMA', 0, 'POINT')} + ' đ'"></span>
+            </div>
+        </div>
+
+        <form th:action="@{/payment}" method="post" class="payment-form">
+            <button type="submit" class="payment-btn">XÁC NHẬN THANH TOÁN (BƯỚC 3)</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shop</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { color: #333; }
+        .cart-link a {
+            background-color: #007bff; color: white; padding: 10px 15px;
+            text-decoration: none; border-radius: 5px; font-weight: bold;
+        }
+        .cart-link a:hover { background-color: #0056b3; }
+
+        /* CSS Grid cho danh sách sản phẩm */
+        .product-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* Tự động chia cột */
+            gap: 20px;
+        }
+        .product-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden; /* Đảm bảo bo góc */
+            text-align: center;
+            padding-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .product-card img { max-width: 100%; height: auto; }
+        .product-card h3 { font-size: 1.2em; margin: 10px 0; }
+        .product-card .price { font-size: 1.1em; color: #d9534f; font-weight: bold; }
+        .product-card .price-old { text-decoration: line-through; color: #777; font-size: 0.9em; }
+        .product-card .actions a {
+            color: #333; text-decoration: none;
+            font-weight: bold; font-size: 1.1em;
+        }
+        .product-card .actions a:hover { color: #007bff; }
+
+        .add-to-cart-btn {
+            background-color: #28a745; color: white; padding: 10px 15px;
+            text-decoration: none; border-radius: 5px; margin-top: 10px;
+            display: inline-block;
+        }
+        .add-to-cart-btn:hover { background-color: #218838; }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>DANH SÁCH SẢN PHẨM</h1>
+        <div class="cart-link">
+            <a th:href="@{/shopping-cart}">
+                🛍️ Your Cart
+                <span th:if="${session.cart != null && session.cart.countItemQuantity() > 0}"
+                      th:text="'(' + ${session.cart.countItemQuantity()} + ')'">
+                </span>
+            </a>
+        </div>
+    </div>
+
+    <div class="product-list">
+        <div class.="product-card" th:each="product : ${products}">
+            <div class="actions">
+                <a th:href="@{/shop/view/__${product.id}__}">
+                    <h3 th:text="${product.name}">Sản phẩm 1</h3>
+                </a>
+            </div>
+
+            <div>
+                <div class="price-old" th:if="${product.name == 'Phở Bò'}">400.000 đ</div>
+                <div class="price" th:text="${#numbers.formatDecimal(product.price, 0, 'COMMA', 0, 'POINT')} + ' đ'">
+                    350.000 đ
+                </div>
+            </div>
+
+            <div class="actions">
+                <a class="add-to-cart-btn" th:href="@{/add/__${product.id}__(action='list')}">
+                    Add to Cart
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
