@@ -1,11 +1,13 @@
 package com.example.ordermeal.controller;
 
 import com.example.ordermeal.entity.*;
+import com.example.ordermeal.repository.OrderRepository;
 import com.example.ordermeal.service.*;
 import com.example.ordermeal.service.VietQRService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity; // *** THÊM IMPORT ***
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +34,7 @@ public class HomeController {
     private final AppStateService appStateService;
     private final ObjectMapper objectMapper;
     private final VietQRService vietQRService;
+    private final OrderRepository orderRepository;
 
     @ModelAttribute
     public void addUserToModel(Model model, HttpSession session) {
@@ -43,31 +46,25 @@ public class HomeController {
 
     @GetMapping
     public String homePage(Model model, HttpSession session) {
+        // ... (Toàn bộ logic của hàm homePage KHÔNG THAY ĐỔI) ...
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) {
             return "redirect:/login";
         }
 
-        // Add basic data
         model.addAttribute("todaysImages", imageService.getTodaysImages());
         model.addAttribute("dishes", dishService.findAll());
 
-        // LẤY TRẠNG THÁI (BAO GỒM BANK INFO)
         AppState appState = appStateService.getAppState();
         model.addAttribute("appState", appState);
         model.addAttribute("isOrderingLocked", appState.isOrderingLocked());
         model.addAttribute("selectedUsers", appStateService.getSelectedUsers());
 
-        // Get cart
         Order cart = orderService.getOrCreateCart(loggedInUser);
         model.addAttribute("cart", cart);
 
-        // *** XÓA LOGIC QR CŨ KHỎI ĐÂY ***
-
-        // Get today's completed orders
         List<Order> todaysCompletedOrders = orderService.getTodaysCompletedOrders();
 
-        // Process summary data
         if (todaysCompletedOrders != null && !todaysCompletedOrders.isEmpty()) {
             List<OrderItem> allItems = todaysCompletedOrders.stream()
                     .filter(order -> order.getItems() != null)
@@ -95,7 +92,6 @@ public class HomeController {
                 BigDecimal grandTotal = subtotals.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
                 int summaryTotalQuantity = allItems.stream().mapToInt(OrderItem::getQuantity).sum();
 
-
                 model.addAttribute("groupedItems", groupedItems);
                 model.addAttribute("totalQuantities", totalQuantities);
                 model.addAttribute("subtotals", subtotals);
@@ -112,7 +108,6 @@ public class HomeController {
                 model.addAttribute("summaryTotalQuantity", 0);
             }
 
-            // Gộp nhóm theo User
             Map<User, List<Order>> ordersByUser = todaysCompletedOrders.stream()
                     .collect(Collectors.groupingBy(Order::getUser));
 
@@ -153,49 +148,49 @@ public class HomeController {
             }
             model.addAttribute("userSummaries", userSummaries);
 
-            // *** BẮT ĐẦU LOGIC TẠO QR CHO USER THANH TOÁN ***
             String myPaymentQr = null;
             String myPaymentDescription = null;
             BigDecimal myPaymentTotal = BigDecimal.ZERO;
             String qrApiError = null;
 
-            // Chỉ tạo QR nếu: 1. Đã khóa đơn VÀ 2. Admin đã setup bank
             if (appState.isOrderingLocked() && appState.getBankBin() != null && !appState.getBankBin().isEmpty()) {
-                // Tìm summary của user đang đăng nhập
                 Optional<UserSummary> mySummary = userSummaries.stream()
                         .filter(s -> s.user().getId().equals(loggedInUser.getId()))
                         .findFirst();
 
-                // Nếu user có đơn hàng VÀ chưa thanh toán
                 if (mySummary.isPresent() && !mySummary.get().isPaid()) {
                     UserSummary summary = mySummary.get();
                     myPaymentTotal = summary.totalAmount();
                     int amountInt = myPaymentTotal.intValue();
-                    myPaymentDescription = loggedInUser.getFullName() + " thanh toan " + amountInt;
 
-                    try {
-                        myPaymentQr = vietQRService.generateQRCode(
-                                appState.getBankBin(),
-                                appState.getBankAccountNo(),
-                                appState.getBankAccountName(),
-                                amountInt,
-                                myPaymentDescription
-                        );
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        qrApiError = "Lỗi tạo mã QR: " + e.getMessage();
+                    Optional<Order> firstOrder = orderRepository.findFirstByUserIdAndOrderDateAndIsCompletedOrderByOrderDateAsc(loggedInUser.getId(), LocalDate.now(), true);
+
+                    if (firstOrder.isPresent() && firstOrder.get().getPaymentCode() != null) {
+                        myPaymentDescription = firstOrder.get().getPaymentCode();
+
+                        try {
+                            myPaymentQr = vietQRService.generateQRCode(
+                                    appState.getBankBin(),
+                                    appState.getBankAccountNo(),
+                                    appState.getBankAccountName(),
+                                    amountInt,
+                                    myPaymentDescription
+                            );
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            qrApiError = "Lỗi tạo mã QR: " + e.getMessage();
+                        }
+                    } else {
+                        qrApiError = "Lỗi: Không tìm thấy mã thanh toán cho đơn hàng.";
                     }
                 }
             }
             model.addAttribute("myPaymentQr", myPaymentQr);
             model.addAttribute("myPaymentTotal", myPaymentTotal);
             model.addAttribute("myPaymentDescription", myPaymentDescription);
-            model.addAttribute("qrApiError", qrApiError); // Lỗi API (nếu có)
-            // *** KẾT THÚC LOGIC TẠO QR ***
-
+            model.addAttribute("qrApiError", qrApiError);
 
         } else {
-            // Trường hợp không có đơn hàng nào cả
             model.addAttribute("groupedItems", Collections.emptyMap());
             model.addAttribute("totalQuantities", Collections.emptyMap());
             model.addAttribute("subtotals", Collections.emptyMap());
@@ -204,7 +199,6 @@ public class HomeController {
             model.addAttribute("summaryTotalQuantity", 0);
             model.addAttribute("userSummaries", Collections.emptyList());
 
-            // Thêm các biến QR rỗng
             model.addAttribute("myPaymentQr", null);
             model.addAttribute("myPaymentTotal", BigDecimal.ZERO);
             model.addAttribute("myPaymentDescription", null);
@@ -213,6 +207,25 @@ public class HomeController {
 
         return "home";
     }
+
+    // *** BẮT ĐẦU THÊM MỚI (ENDPOINT CHO POLLING) ***
+    @GetMapping("/payment/status")
+    @ResponseBody // Rất quan trọng: Trả về JSON, không phải tên view
+    public ResponseEntity<Map<String, Object>> getPaymentStatus(HttpSession session) {
+        User loggedInUser = (User) session.getAttribute("loggedInUser");
+
+        if (loggedInUser == null) {
+            // Không có user, trả về "chưa thanh toán"
+            return ResponseEntity.ok(Map.of("paid", false));
+        }
+
+        // Gọi service để kiểm tra
+        boolean isPaid = orderService.checkTodayPaymentStatus(loggedInUser.getId());
+
+        // Trả về JSON: {"paid": true} hoặc {"paid": false}
+        return ResponseEntity.ok(Map.of("paid", isPaid));
+    }
+    // *** KẾT THÚC THÊM MỚI ***
 
     // ... (Các phương thức còn lại không thay đổi) ...
     @PostMapping("/upload")
