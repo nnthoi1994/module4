@@ -7,7 +7,7 @@ import com.example.ordermeal.service.VietQRService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity; // *** THÊM IMPORT ***
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -46,7 +46,6 @@ public class HomeController {
 
     @GetMapping
     public String homePage(Model model, HttpSession session) {
-        // ... (Toàn bộ logic của hàm homePage KHÔNG THAY ĐỔI) ...
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) {
             return "redirect:/login";
@@ -62,6 +61,37 @@ public class HomeController {
 
         Order cart = orderService.getOrCreateCart(loggedInUser);
         model.addAttribute("cart", cart);
+
+        String qrCodeBase64 = null;
+        String qrApiError = null;
+        String paymentDescription = null;
+
+        boolean showQr = cart.getTotalAmount() != null
+                && cart.getTotalAmount().compareTo(BigDecimal.ZERO) > 0
+                && appState.getBankBin() != null && !appState.getBankBin().isEmpty()
+                && !"ADMIN".equals(loggedInUser.getRole());
+
+        if (showQr) {
+            try {
+                int amount = cart.getTotalAmount().intValue();
+                paymentDescription = cart.getPaymentCode();
+
+                qrCodeBase64 = vietQRService.generateQRCode(
+                        appState.getBankBin(),
+                        appState.getBankAccountNo(),
+                        appState.getBankAccountName(),
+                        amount,
+                        paymentDescription
+                );
+            } catch (Exception e) {
+                e.printStackTrace();
+                qrApiError = "Lỗi tạo mã QR: " + e.getMessage();
+            }
+        }
+
+        model.addAttribute("qrCodeBase64", qrCodeBase64);
+        model.addAttribute("qrApiError", qrApiError);
+        model.addAttribute("paymentDescription", paymentDescription);
 
         List<Order> todaysCompletedOrders = orderService.getTodaysCompletedOrders();
 
@@ -98,7 +128,6 @@ public class HomeController {
                 model.addAttribute("grandTotal", grandTotal);
                 model.addAttribute("summaryTotalAmount", grandTotal);
                 model.addAttribute("summaryTotalQuantity", summaryTotalQuantity);
-
             } else {
                 model.addAttribute("groupedItems", Collections.emptyMap());
                 model.addAttribute("totalQuantities", Collections.emptyMap());
@@ -142,54 +171,9 @@ public class HomeController {
                         .map(Order::getTotalAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                boolean isPaid = userOrders.get(0).isPaid();
-
-                userSummaries.add(new UserSummary(user, mergedItemsList, userTotalQuantity, userTotalAmount, isPaid));
+                userSummaries.add(new UserSummary(user, mergedItemsList, userTotalQuantity, userTotalAmount, true));
             }
             model.addAttribute("userSummaries", userSummaries);
-
-            String myPaymentQr = null;
-            String myPaymentDescription = null;
-            BigDecimal myPaymentTotal = BigDecimal.ZERO;
-            String qrApiError = null;
-
-            if (appState.isOrderingLocked() && appState.getBankBin() != null && !appState.getBankBin().isEmpty()) {
-                Optional<UserSummary> mySummary = userSummaries.stream()
-                        .filter(s -> s.user().getId().equals(loggedInUser.getId()))
-                        .findFirst();
-
-                if (mySummary.isPresent() && !mySummary.get().isPaid()) {
-                    UserSummary summary = mySummary.get();
-                    myPaymentTotal = summary.totalAmount();
-                    int amountInt = myPaymentTotal.intValue();
-
-                    Optional<Order> firstOrder = orderRepository.findFirstByUserIdAndOrderDateAndIsCompletedOrderByOrderDateAsc(loggedInUser.getId(), LocalDate.now(), true);
-
-                    if (firstOrder.isPresent() && firstOrder.get().getPaymentCode() != null) {
-                        myPaymentDescription = firstOrder.get().getPaymentCode();
-
-                        try {
-                            myPaymentQr = vietQRService.generateQRCode(
-                                    appState.getBankBin(),
-                                    appState.getBankAccountNo(),
-                                    appState.getBankAccountName(),
-                                    amountInt,
-                                    myPaymentDescription
-                            );
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            qrApiError = "Lỗi tạo mã QR: " + e.getMessage();
-                        }
-                    } else {
-                        qrApiError = "Lỗi: Không tìm thấy mã thanh toán cho đơn hàng.";
-                    }
-                }
-            }
-            model.addAttribute("myPaymentQr", myPaymentQr);
-            model.addAttribute("myPaymentTotal", myPaymentTotal);
-            model.addAttribute("myPaymentDescription", myPaymentDescription);
-            model.addAttribute("qrApiError", qrApiError);
-
         } else {
             model.addAttribute("groupedItems", Collections.emptyMap());
             model.addAttribute("totalQuantities", Collections.emptyMap());
@@ -198,50 +182,35 @@ public class HomeController {
             model.addAttribute("summaryTotalAmount", BigDecimal.ZERO);
             model.addAttribute("summaryTotalQuantity", 0);
             model.addAttribute("userSummaries", Collections.emptyList());
-
-            model.addAttribute("myPaymentQr", null);
-            model.addAttribute("myPaymentTotal", BigDecimal.ZERO);
-            model.addAttribute("myPaymentDescription", null);
-            model.addAttribute("qrApiError", null);
         }
 
         return "home";
     }
 
-    // *** BẮT ĐẦU THÊM MỚI (ENDPOINT CHO POLLING) ***
+    // *** BẮT ĐẦU SỬA ĐỔI (Thêm tham số code) ***
     @GetMapping("/payment/status")
-    @ResponseBody // Rất quan trọng: Trả về JSON, không phải tên view
-    public ResponseEntity<Map<String, Object>> getPaymentStatus(HttpSession session) {
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getPaymentStatus(@RequestParam(required = false) String code, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
-
-        if (loggedInUser == null) {
-            // Không có user, trả về "chưa thanh toán"
+        if (loggedInUser == null || code == null || code.isEmpty()) {
             return ResponseEntity.ok(Map.of("paid", false));
         }
-
-        // Gọi service để kiểm tra
-        boolean isPaid = orderService.checkTodayPaymentStatus(loggedInUser.getId());
-
-        // Trả về JSON: {"paid": true} hoặc {"paid": false}
+        // Kiểm tra theo Mã thanh toán, không phải theo User
+        boolean isPaid = orderService.checkPaymentStatusByCode(code);
         return ResponseEntity.ok(Map.of("paid", isPaid));
     }
-    // *** KẾT THÚC THÊM MỚI ***
+    // *** KẾT THÚC SỬA ĐỔI ***
 
-    // ... (Các phương thức còn lại không thay đổi) ...
     @PostMapping("/upload")
     public String handleImageUpload(@RequestParam("images") List<MultipartFile> files,
                                     RedirectAttributes redirectAttributes, HttpSession session) {
         if (session.getAttribute("loggedInUser") == null) return "redirect:/login";
-
         try {
             for (MultipartFile file : files) {
-                if (!file.isEmpty()) {
-                    imageService.saveImage(file);
-                }
+                if (!file.isEmpty()) imageService.saveImage(file);
             }
             redirectAttributes.addFlashAttribute("successMessage", "Upload ảnh thành công!");
         } catch (IOException e) {
-            e.printStackTrace();
             redirectAttributes.addFlashAttribute("errorMessage", "Upload ảnh thất bại: " + e.getMessage());
         }
         return "redirect:/";
@@ -250,7 +219,6 @@ public class HomeController {
     @PostMapping("/image/delete/{id}")
     public String deleteImage(@PathVariable Long id, RedirectAttributes redirectAttributes, HttpSession session) {
         if (session.getAttribute("loggedInUser") == null) return "redirect:/login";
-
         try {
             imageService.deleteImageById(id);
             redirectAttributes.addFlashAttribute("successMessage", "Đã xóa ảnh thành công.");
@@ -261,15 +229,11 @@ public class HomeController {
     }
 
     @PostMapping("/dishes/create")
-    public String createDish(@RequestParam String name,
-                             @RequestParam BigDecimal price,
-                             RedirectAttributes redirectAttributes, HttpSession session) {
+    public String createDish(@RequestParam String name, @RequestParam BigDecimal price, RedirectAttributes redirectAttributes, HttpSession session) {
         if (session.getAttribute("loggedInUser") == null) return "redirect:/login";
-
         Dish newDish = new Dish();
         newDish.setName(name);
         newDish.setPrice(price);
-
         if (dishService.save(newDish) != null) {
             redirectAttributes.addFlashAttribute("successMessage", "Tạo món ăn mới thành công!");
         } else {
@@ -282,34 +246,27 @@ public class HomeController {
     public String deleteDish(@PathVariable Long id, RedirectAttributes redirectAttributes, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
-
         if (!"ADMIN".equals(loggedInUser.getRole())) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thực hiện hành động này.");
             return "redirect:/";
         }
-
         try {
             dishService.deleteById(id);
             redirectAttributes.addFlashAttribute("successMessage", "Đã xóa món ăn thành công.");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không thể xóa món ăn này. Có thể món ăn đã được đặt trong một đơn hàng nào đó.");
+            redirectAttributes.addFlashAttribute("errorMessage", "Không thể xóa món ăn này.");
         }
         return "redirect:/";
     }
 
-
     @PostMapping("/cart/add")
-    public String addToCart(@RequestParam Long dishId,
-                            @RequestParam int quantity,
-                            RedirectAttributes redirectAttributes, HttpSession session) {
+    public String addToCart(@RequestParam Long dishId, @RequestParam int quantity, RedirectAttributes redirectAttributes, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
-
         if(appStateService.isOrderingLocked() && !"ADMIN".equals(loggedInUser.getRole())) {
             redirectAttributes.addFlashAttribute("errorMessage", "Admin đã khóa chức năng đặt món.");
             return "redirect:/";
         }
-
         try {
             orderService.addToCart(loggedInUser.getId(), dishId, quantity);
             redirectAttributes.addFlashAttribute("successMessage", "Đã thêm món ăn vào giỏ hàng.");
@@ -331,13 +288,18 @@ public class HomeController {
 
         Order cart = orderService.getOrCreateCart(loggedInUser);
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Giỏ hàng của bạn đang rỗng. Không thể hoàn tất.");
+            redirectAttributes.addFlashAttribute("errorMessage", "Giỏ hàng của bạn đang rỗng.");
             return "redirect:/";
         }
 
         try {
             orderService.completeOrder(loggedInUser.getId());
-            redirectAttributes.addFlashAttribute("successMessage", "Đặt cơm thành công!");
+
+            if ("ADMIN".equals(loggedInUser.getRole())) {
+                redirectAttributes.addFlashAttribute("successMessage", "Đã hoàn tất đơn hàng (Admin).");
+            } else {
+                redirectAttributes.addFlashAttribute("autoShowPaymentModal", true);
+            }
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra: " + e.getMessage());
         }
@@ -348,27 +310,11 @@ public class HomeController {
     public String cancelOrder(RedirectAttributes redirectAttributes, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
-
         try {
             orderService.cancelOrder(loggedInUser.getId());
-            redirectAttributes.addFlashAttribute("successMessage", "Đã hủy đơn hàng.");
+            redirectAttributes.addFlashAttribute("successMessage", "Đã hủy giỏ hàng.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Có lỗi xảy ra: " + e.getMessage());
-        }
-        return "redirect:/";
-    }
-
-    @PostMapping("/order/toggle-payment")
-    public String togglePayment(HttpSession session, RedirectAttributes redirectAttributes) {
-        User loggedInUser = (User) session.getAttribute("loggedInUser");
-        if (loggedInUser == null) {
-            return "redirect:/login";
-        }
-
-        try {
-            orderService.togglePaymentStatus(loggedInUser.getId(), LocalDate.now());
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi cập nhật thanh toán.");
         }
         return "redirect:/";
     }
@@ -377,25 +323,20 @@ public class HomeController {
     public String pickRandomUsers(RedirectAttributes redirectAttributes, HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) return "redirect:/login";
-
         AppState appState = appStateService.getAppState();
-
         if (!appState.isOrderingLocked()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Chức năng này chỉ mở sau khi Admin 'Kết thúc chọn món'.");
             return "redirect:/";
         }
-
         if (appState.isHasBeenSpun() && !"ADMIN".equals(loggedInUser.getRole())) {
-            redirectAttributes.addFlashAttribute("infoMessage", "Đã có người quay số rồi. Chỉ Admin mới được quay lại.");
+            redirectAttributes.addFlashAttribute("infoMessage", "Đã có người quay số rồi.");
             return "redirect:/";
         }
-
         List<User> selectedUsers = orderService.getRandomUsersToFetchMeals();
         if (selectedUsers.isEmpty()) {
-            redirectAttributes.addFlashAttribute("infoMessage", "Không có đủ người dùng nam hợp lệ (hoặc chưa ai đặt cơm) để chọn.");
+            redirectAttributes.addFlashAttribute("infoMessage", "Không có đủ người dùng để chọn.");
         } else {
             appStateService.recordSpin(loggedInUser, selectedUsers);
-
             String successMsg = "ADMIN".equals(loggedInUser.getRole()) ? "Admin đã quay lại thành công!" : "Bạn đã quay số thành công!";
             redirectAttributes.addFlashAttribute("successMessage", successMsg);
         }

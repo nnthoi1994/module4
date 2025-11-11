@@ -31,21 +31,33 @@ public class OrderService {
     private final EmailService emailService;
 
     public Order getOrCreateCart(User user) {
-        // ... (Không thay đổi)
-        return orderRepository.findByUserIdAndOrderDateAndIsCompleted(user.getId(), LocalDate.now(), false)
+        Order cart = orderRepository.findByUserIdAndOrderDateAndIsCompleted(user.getId(), LocalDate.now(), false)
                 .orElseGet(() -> {
                     Order newCart = new Order();
                     newCart.setUser(user);
                     newCart.setOrderDate(LocalDate.now());
                     newCart.setTotalAmount(BigDecimal.ZERO);
                     newCart.setCompleted(false);
+                    newCart.setPaid(false);
                     newCart.setItems(new ArrayList<>());
-                    return orderRepository.save(newCart);
+                    return newCart;
                 });
+
+        if (cart.getPaymentCode() == null || cart.getPaymentCode().isEmpty()) {
+            cart.setPaymentCode(generatePaymentCode(user));
+            cart = orderRepository.save(cart);
+        }
+        return cart;
+    }
+
+    private String generatePaymentCode(User user) {
+        String normalizedName = StringUtils.normalizeName(user.getFullName());
+        String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("ddMM"));
+        String randomChars = StringUtils.generateRandomString(6);
+        return "PAY" + normalizedName + dateStr + randomChars + "PAY";
     }
 
     public void addToCart(Long userId, Long dishId, int quantity) {
-        // ... (Không thay đổi)
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         Dish dish = dishRepository.findById(dishId).orElseThrow(() -> new RuntimeException("Dish not found"));
         Order cart = getOrCreateCart(user);
@@ -67,92 +79,127 @@ public class OrderService {
             cart.getItems().add(orderItemRepository.save(newItem));
         }
         updateCartTotal(cart);
+
+        if (cart.isPaid()) {
+            cart.setPaid(false);
+            cart.setPaymentCode(generatePaymentCode(user));
+            orderRepository.save(cart);
+        }
     }
 
     private void updateCartTotal(Order cart) {
-        // ... (Không thay đổi)
         BigDecimal total = cart.getItems().stream()
                 .map(item -> item.getPricePerItem().multiply(new BigDecimal(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         cart.setTotalAmount(total);
         orderRepository.save(cart);
     }
 
     public void completeOrder(Long userId) {
-        // ... (Không thay đổi)
         User user = userRepository.findById(userId).orElseThrow();
         Order cart = getOrCreateCart(user);
-
         updateCartTotal(cart);
-        cart.setCompleted(true);
 
-        LocalDate today = LocalDate.now();
-
-        Optional<Order> existingOrder = orderRepository.findFirstByUserIdAndOrderDateAndIsCompletedOrderByOrderDateAsc(userId, today, true);
-
-        String paymentCodeToUse;
-        boolean isPaidStatus = false;
-
-        if (existingOrder.isPresent() && existingOrder.get().getPaymentCode() != null) {
-            paymentCodeToUse = existingOrder.get().getPaymentCode();
-            isPaidStatus = existingOrder.get().isPaid();
+        if ("ADMIN".equals(user.getRole())) {
+            cart.setCompleted(true);
+            cart.setPaid(true);
+            cart.setPaymentCode("ADMIN_COMPLETED");
+            orderRepository.save(cart);
         } else {
-            String normalizedName = StringUtils.normalizeName(user.getFullName());
-            String dateStr = today.format(DateTimeFormatter.ofPattern("ddMM"));
-            String randomChars = StringUtils.generateRandomString(6);
-            paymentCodeToUse = "PAY" + normalizedName + dateStr + randomChars + "PAY";
+            if (cart.getPaymentCode() == null) {
+                cart.setPaymentCode(generatePaymentCode(user));
+            }
+            orderRepository.save(cart);
         }
-
-        cart.setPaymentCode(paymentCodeToUse);
-        cart.setPaid(isPaidStatus);
-
-        orderRepository.save(cart);
     }
 
     public void cancelOrder(Long userId) {
-        // ... (Không thay đổi)
         Order cart = getOrCreateCart(userRepository.findById(userId).orElseThrow());
         orderRepository.delete(cart);
     }
 
+    // *** BẮT ĐẦU SỬA ĐỔI (HÀM CHECK MỚI) ***
+    @Transactional(readOnly = true)
+    public boolean checkPaymentStatusByCode(String paymentCode) {
+        if (paymentCode == null || paymentCode.isEmpty()) return false;
+
+        // Tìm đơn hàng có mã này
+        Optional<Order> orderOpt = orderRepository.findFirstByPaymentCode(paymentCode);
+
+        // Trả về true nếu tìm thấy VÀ đã thanh toán
+        return orderOpt.map(Order::isPaid).orElse(false);
+    }
+    // *** KẾT THÚC SỬA ĐỔI ***
+
+    @Transactional
+    public boolean markAsPaidByPaymentCode(String paymentCode) {
+        Optional<Order> orderOpt = orderRepository.findFirstByPaymentCode(paymentCode);
+
+        if (orderOpt.isPresent()) {
+            Order foundOrder = orderOpt.get();
+
+            if (foundOrder.isCompleted()) {
+                return false;
+            }
+
+            if (foundOrder.isPaid()) {
+                return true;
+            }
+
+            User user = foundOrder.getUser();
+
+            foundOrder.setPaid(true);
+            foundOrder.setCompleted(true);
+            orderRepository.save(foundOrder);
+
+            try {
+                BigDecimal totalAmount = foundOrder.getTotalAmount();
+                NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+                String totalAmountFormatted = currencyFormatter.format(totalAmount);
+
+                String dishListHtml = foundOrder.getItems().stream()
+                        .map(item -> String.format("<li>%s (SL: %d)</li>", item.getDish().getName(), item.getQuantity()))
+                        .collect(Collectors.joining(""));
+
+                String emailContent = String.format(
+                        "<p>Chào %s,</p>" +
+                                "<p>Hệ thống đã nhận được thanh toán. Đơn hàng của bạn đã được xác nhận.</p>" +
+                                "<p><strong>Tổng tiền: %s</strong></p>" +
+                                "<p>Món ăn:</p><ul>%s</ul>",
+                        user.getFullName(),
+                        totalAmountFormatted,
+                        dishListHtml
+                );
+                emailService.sendEmail(user.getEmail(), "Xác nhận thanh toán thành công", emailContent);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return true;
+        }
+        return false;
+    }
+
     public List<Order> getTodaysCompletedOrders() {
-        // ... (Không thay đổi)
         return orderRepository.findByOrderDateAndIsCompleted(LocalDate.now(), true);
     }
-
     public List<Order> getTodaysCompletedAndUnpaidOrders() {
-        // ... (Không thay đổi)
         return orderRepository.findByOrderDateAndIsCompletedAndIsPaid(LocalDate.now(), true, false);
     }
-
     public List<Order> getPersonalHistory(Long userId) {
-        // ... (Không thay đổi)
         return orderRepository.findByUserIdAndIsCompletedOrderByOrderDateDesc(userId, true);
     }
-
     public List<Order> getGeneralHistory() {
-        // ... (Không thay đổi)
         return orderRepository.findAllByIsCompletedAndOrderDateBefore(true, LocalDate.now());
     }
-
     public void resetTodaysOrders() {
-        // ... (Không thay đổi)
         List<Order> todaysOrders = orderRepository.findByOrderDate(LocalDate.now());
         orderRepository.deleteAll(todaysOrders);
     }
-
-    @Transactional
     public void deleteCompletedOrderById(Long orderId) {
-        // ... (Không thay đổi)
         orderRepository.deleteById(orderId);
     }
-
-    @Transactional
     public void togglePaymentStatus(Long userId, LocalDate date) {
-        // ... (Không thay đổi)
         List<Order> todaysOrders = orderRepository.findAllByUserIdAndOrderDateAndIsCompleted(userId, date, true);
-
         if (!todaysOrders.isEmpty()) {
             boolean newStatus = !todaysOrders.get(0).isPaid();
             for (Order order : todaysOrders) {
@@ -161,96 +208,13 @@ public class OrderService {
             orderRepository.saveAll(todaysOrders);
         }
     }
-
-    // *** BẮT ĐẦU THÊM MỚI ***
-    @Transactional(readOnly = true) // Chỉ đọc, không thay đổi
-    public boolean checkTodayPaymentStatus(Long userId) {
-        LocalDate today = LocalDate.now();
-        // Tìm đơn hàng ĐÃ HOÀN TẤT đầu tiên của user
-        Optional<Order> orderOpt = orderRepository.findFirstByUserIdAndOrderDateAndIsCompletedOrderByOrderDateAsc(userId, today, true);
-
-        // Nếu họ có đơn hàng, trả về trạng thái isPaid
-        // Nếu họ không có đơn hàng nào, họ cũng chưa paid -> trả về false
-        return orderOpt.map(Order::isPaid).orElse(false);
-    }
-    // *** KẾT THÚC THÊM MỚI ***
-
-    @Transactional
-    public boolean markAsPaidByPaymentCode(String paymentCode) {
-        // ... (Không thay đổi)
-        Optional<Order> orderOpt = orderRepository.findFirstByPaymentCode(paymentCode);
-
-        if (orderOpt.isPresent()) {
-            Order foundOrder = orderOpt.get();
-
-            if (foundOrder.isPaid()) {
-                System.out.println("ℹ️ Webhook: Mã " + paymentCode + " đã được xử lý trước đó.");
-                return true;
-            }
-
-            User user = foundOrder.getUser();
-            LocalDate orderDate = foundOrder.getOrderDate();
-
-            List<Order> allUserOrders = orderRepository.findAllByUserIdAndOrderDateAndIsCompleted(user.getId(), orderDate, true);
-
-            for (Order order : allUserOrders) {
-                order.setPaid(true);
-            }
-            orderRepository.saveAll(allUserOrders);
-
-            try {
-                BigDecimal totalAmount = allUserOrders.stream()
-                        .map(Order::getTotalAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-                NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-                String totalAmountFormatted = currencyFormatter.format(totalAmount);
-
-                String dishListHtml = allUserOrders.stream()
-                        .flatMap(o -> o.getItems().stream())
-                        .collect(Collectors.groupingBy(
-                                item -> item.getDish().getName(),
-                                Collectors.summingInt(OrderItem::getQuantity)
-                        ))
-                        .entrySet().stream()
-                        .map(entry -> String.format("<li>%s (SL: %d)</li>", entry.getKey(), entry.getValue()))
-                        .collect(Collectors.joining(""));
-
-                String emailContent = String.format(
-                        "<p>Chào %s,</p>" +
-                                "<p>Hệ thống vừa ghi nhận thanh toán thành công cho đơn hàng hôm nay của bạn.</p>" +
-                                "<p><strong>Tổng số tiền đã thanh toán: %s</strong></p>" +
-                                "<p>Các món ăn bao gồm:</p>" +
-                                "<ul>%s</ul>" +
-                                "<p>Cảm ơn bạn!</p>",
-                        user.getFullName(),
-                        totalAmountFormatted,
-                        dishListHtml
-                );
-
-                emailService.sendEmail(user.getEmail(), "Xác nhận thanh toán thành công", emailContent);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.err.println("❌ Lỗi khi gửi email xác nhận thanh toán cho: " + user.getUsername());
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-
     public List<User> getRandomUsersToFetchMeals() {
-        // ... (Không thay đổi)
         List<Order> todaysOrders = getTodaysCompletedOrders();
         List<User> eligibleUsers = todaysOrders.stream()
                 .map(Order::getUser)
                 .filter(user -> "MALE".equalsIgnoreCase(user.getGender()) && !"ADMIN".equals(user.getRole()))
                 .distinct()
                 .collect(Collectors.toList());
-
         Collections.shuffle(eligibleUsers);
         return eligibleUsers.stream().limit(2).collect(Collectors.toList());
     }

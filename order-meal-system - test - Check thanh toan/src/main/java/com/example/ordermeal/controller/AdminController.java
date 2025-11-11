@@ -7,7 +7,6 @@ import com.example.ordermeal.service.AppStateService;
 import com.example.ordermeal.service.EmailService;
 import com.example.ordermeal.service.OrderService;
 import com.example.ordermeal.service.VietQRService;
-import com.example.ordermeal.util.StringUtils;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -18,11 +17,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
-import java.time.LocalDate; // *** THÊM IMPORT ***
+import java.time.LocalDate;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional; // *** THÊM IMPORT ***
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
@@ -33,7 +32,6 @@ public class AdminController {
     private final OrderService orderService;
     private final EmailService emailService;
     private final VietQRService vietQRService;
-    private final com.example.ordermeal.repository.OrderRepository orderRepository; // *** THÊM REPO ***
 
     private boolean isAdmin(HttpSession session) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
@@ -56,26 +54,8 @@ public class AdminController {
         return "redirect:/";
     }
 
-    // *** BẮT ĐẦU THÊM MỚI (ENDPOINT CHO ADMIN TICK) ***
-    @PostMapping("/toggle-payment/{userId}")
-    public String adminTogglePayment(@PathVariable Long userId, HttpSession session, RedirectAttributes redirectAttributes) {
-        if (!isAdmin(session)) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không có quyền.");
-            return "redirect:/";
-        }
-        try {
-            // Dùng hàm service đã có
-            orderService.togglePaymentStatus(userId, LocalDate.now());
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi cập nhật thanh toán.");
-        }
-        return "redirect:/";
-    }
-    // *** KẾT THÚC THÊM MỚI ***
-
     @PostMapping("/toggle-lock")
     public String toggleOrderLock(HttpSession session, RedirectAttributes redirectAttributes) {
-        // ... (Không thay đổi)
         if (!isAdmin(session)) {
             return "redirect:/";
         }
@@ -91,7 +71,6 @@ public class AdminController {
 
     @PostMapping("/reset-orders")
     public String resetTodaysOrders(HttpSession session, RedirectAttributes redirectAttributes) {
-        // ... (Không thay đổi)
         if (!isAdmin(session)) {
             return "redirect:/";
         }
@@ -121,7 +100,6 @@ public class AdminController {
         }
 
         NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-
         List<User> usersToSend = unpaidOrders.stream()
                 .map(Order::getUser)
                 .distinct()
@@ -139,19 +117,11 @@ public class AdminController {
             String totalAmountFormatted = currencyFormatter.format(totalUnpaidAmount);
             int amountInt = totalUnpaidAmount.intValue();
 
-            // *** BẮT ĐẦU SỬA ĐỔI (LẤY PAYMENT CODE) ***
-            // Lấy payment code từ đơn hàng đầu tiên của user
             String description = null;
             Optional<Order> firstOrder = userUnpaidOrders.stream().findFirst();
             if (firstOrder.isPresent()) {
                 description = firstOrder.get().getPaymentCode();
             }
-
-            // Nếu vì lý do gì đó mà không có code (ví dụ đơn hàng cũ), tạo 1 code tạm
-            if (description == null) {
-                description = StringUtils.normalizeName(user.getFullName()) + " thanh toan " + amountInt;
-            }
-            // *** KẾT THÚC SỬA ĐỔI ***
 
             String qrCodeBase64 = null;
             try {
@@ -160,11 +130,10 @@ public class AdminController {
                         appState.getBankAccountNo(),
                         appState.getBankAccountName(),
                         amountInt,
-                        description // Sử dụng payment code làm nội dung
+                        description
                 );
             } catch (Exception e) {
                 e.printStackTrace();
-                System.err.println("❌ Lỗi tạo QR cho email của user: " + user.getUsername() + " - " + e.getMessage());
             }
 
             String emailContent = String.format(
@@ -182,14 +151,13 @@ public class AdminController {
                                 "  <img src='cid:qrCodeImage' alt='Mã QR Thanh toán' style='width:250px; height:auto;'/>" +
                                 "  <p><strong>Nội dung:</strong> %s</p>" +
                                 "</div>",
-                        description // Hiển thị payment code
+                        description
                 );
             } else {
                 emailContent += "<p>Không thể tạo mã QR, vui lòng chuyển khoản thủ công.</p>";
             }
 
             emailContent += "<p>Cảm ơn bạn đã sử dụng dịch vụ!</p>";
-
             emailService.sendEmail(user.getEmail(), "Thông báo thanh toán tiền cơm", emailContent, qrCodeBase64);
         }
 
@@ -199,7 +167,6 @@ public class AdminController {
 
     @PostMapping("/order/delete/{orderId}")
     public String deleteCompletedOrder(@PathVariable Long orderId, HttpSession session, RedirectAttributes redirectAttributes) {
-        // ... (Không thay đổi)
         if (!isAdmin(session)) {
             redirectAttributes.addFlashAttribute("errorMessage", "Bạn không có quyền thực hiện hành động này.");
             return "redirect:/";
