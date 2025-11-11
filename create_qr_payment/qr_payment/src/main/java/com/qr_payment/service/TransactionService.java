@@ -27,7 +27,7 @@ public class TransactionService {
     public String createTransaction(String customerName) {
         String normalizedName = StringUtils.normalizeName(customerName);
         String uniqueCode = generateRandomString(6);
-        String transactionId = String.format("PAY.%s.%s", normalizedName, uniqueCode);
+        String transactionId = String.format("PAY%s", uniqueCode);
 
         // Lưu với trạng thái PENDING
         transactionDatabase.put(transactionId, "PENDING");
