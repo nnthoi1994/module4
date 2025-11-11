@@ -6,11 +6,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
-public interface IBlogService{
+public interface IBlogService {
     List<Blog> findAll();
 
-    void save(Blog blog);
+    // Method quan trọng cho phân trang
+    Page<Blog> findAll(Pageable pageable);
 
+    void save(Blog blog);
     Blog findById(Integer id);
     void deleteById(Integer id);
     List<Blog> findByCategoryId(Integer categoryId);
