@@ -3,6 +3,7 @@ package com.example.ordermeal.service;
 import com.example.ordermeal.entity.Dish;
 import com.example.ordermeal.repository.DishRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,7 +15,8 @@ public class DishService {
     private final DishRepository dishRepository;
 
     public List<Dish> findAll() {
-        return dishRepository.findAll();
+        // Sắp xếp giảm dần theo ID để món mới nhất hiện lên đầu
+        return dishRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
     }
 
     public Optional<Dish> findById(Long id) {
@@ -28,14 +30,10 @@ public class DishService {
         return null;
     }
 
-    // *** HÀM MỚI ***
     public void deleteById(Long id) {
-        // (Chúng ta có thể thêm kiểm tra xem món ăn có tồn tại không,
-        // nhưng hiện tại chỉ cần gọi xóa)
         try {
             dishRepository.deleteById(id);
         } catch (Exception e) {
-            // Có thể log lỗi ở đây
             System.err.println("Lỗi khi xóa món ăn: " + e.getMessage());
         }
     }

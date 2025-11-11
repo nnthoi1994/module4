@@ -16,9 +16,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findAllByIsCompletedAndOrderDateBefore(boolean isCompleted, LocalDate date);
     List<Order> findByOrderDate(LocalDate date);
     List<Order> findAllByUserIdAndOrderDateAndIsCompleted(Long userId, LocalDate date, boolean isCompleted);
+    List<Order> findByOrderDateAndIsCompletedAndIsPaid(LocalDate date, boolean isCompleted, boolean isPaid);
 
     // *** BẮT ĐẦU THÊM MỚI ***
-    // Tìm các đơn hàng theo ngày, đã hoàn tất, VÀ theo trạng thái thanh toán
-    List<Order> findByOrderDateAndIsCompletedAndIsPaid(LocalDate date, boolean isCompleted, boolean isPaid);
+    // 1. Dùng để tìm mã thanh toán đã có của user trong ngày
+    Optional<Order> findFirstByUserIdAndOrderDateAndIsCompletedOrderByOrderDateAsc(Long userId, LocalDate date, boolean isCompleted);
+
+    // 2. Dùng cho Webhook để tìm đơn hàng
+    Optional<Order> findFirstByPaymentCode(String paymentCode);
     // *** KẾT THÚC THÊM MỚI ***
 }

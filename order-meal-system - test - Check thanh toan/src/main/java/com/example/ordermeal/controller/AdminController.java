@@ -17,9 +17,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Controller
@@ -98,7 +100,6 @@ public class AdminController {
         }
 
         NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
-
         List<User> usersToSend = unpaidOrders.stream()
                 .map(Order::getUser)
                 .distinct()
@@ -115,7 +116,12 @@ public class AdminController {
 
             String totalAmountFormatted = currencyFormatter.format(totalUnpaidAmount);
             int amountInt = totalUnpaidAmount.intValue();
-            String description = user.getFullName() + " thanh toan " + amountInt;
+
+            String description = null;
+            Optional<Order> firstOrder = userUnpaidOrders.stream().findFirst();
+            if (firstOrder.isPresent()) {
+                description = firstOrder.get().getPaymentCode();
+            }
 
             String qrCodeBase64 = null;
             try {
@@ -128,10 +134,8 @@ public class AdminController {
                 );
             } catch (Exception e) {
                 e.printStackTrace();
-                System.err.println("❌ Lỗi tạo QR cho email của user: " + user.getUsername() + " - " + e.getMessage());
             }
 
-            // Xây dựng nội dung email
             String emailContent = String.format(
                     "<p>Chào %s,</p>" +
                             "<p>Hệ thống đặt cơm xin thông báo chi phí bữa trưa hôm nay của bạn.</p>" +
@@ -141,28 +145,20 @@ public class AdminController {
             );
 
             if (qrCodeBase64 != null) {
-                // *** BẮT ĐẦU SỬA ĐỔI ***
-                // Thay thế chuỗi Base64 bằng tham chiếu CID (Content-ID)
                 emailContent += String.format(
                         "<p>Bạn có thể quét mã QR dưới đây để thanh toán:</p>" +
                                 "<div style='text-align:center;'>" +
-                                //   Đây là thay đổi quan trọng: src='cid:qrCodeImage'
                                 "  <img src='cid:qrCodeImage' alt='Mã QR Thanh toán' style='width:250px; height:auto;'/>" +
                                 "  <p><strong>Nội dung:</strong> %s</p>" +
                                 "</div>",
                         description
                 );
-                // *** KẾT THÚC SỬA ĐỔI ***
             } else {
                 emailContent += "<p>Không thể tạo mã QR, vui lòng chuyển khoản thủ công.</p>";
             }
 
             emailContent += "<p>Cảm ơn bạn đã sử dụng dịch vụ!</p>";
-
-            // *** BẮT ĐẦU SỬA ĐỔI ***
-            // Gọi hàm sendEmail mới, truyền cả chuỗi Base64 để nó xử lý
             emailService.sendEmail(user.getEmail(), "Thông báo thanh toán tiền cơm", emailContent, qrCodeBase64);
-            // *** KẾT THÚC SỬA ĐỔI ***
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "Đã gửi email thanh toán đến " + usersToSend.size() + " người dùng chưa thanh toán.");
