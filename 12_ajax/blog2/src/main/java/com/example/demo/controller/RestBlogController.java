@@ -1,7 +1,9 @@
 package com.example.demo.controller;
 
 import com.example.demo.entity.Blog;
+import com.example.demo.entity.Category;
 import com.example.demo.service.IBlogService;
+import com.example.demo.service.ICategoryService;
 import org.apache.coyote.Response;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
-
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("v1/api/blog")
 
@@ -20,6 +22,9 @@ public class RestBlogController {
     private IBlogService blogService;
     @Autowired
     private IBlogService iBlogService;
+    @Autowired
+    private ICategoryService categoryService;
+
 
     @GetMapping
     public ResponseEntity<List<Blog>> findAllBlog() {
@@ -67,5 +72,14 @@ public class RestBlogController {
         }
         blogService.save(blog);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<List<Category>> getAllCategories() {
+        List<Category> categories = categoryService.findAll();
+        if (categories.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        }
+        return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 }

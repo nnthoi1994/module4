@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blog List</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+<h1>Danh sách Blog</h1>
+<div>
+    <input id="title" placeholder="Nhập tiêu đề"><br>
+    <input id="author" placeholder="Nhập tác giả"><br>
+
+    <select id="categoryId">
+        <option value="">------ Chọn thể loại ------</option>
+    </select>
+    <br>
+    <button id="btn-save">Lưu</button>
+</div>
+
+<table border="1" style="border-collapse: collapse">
+    <thead>
+    <tr>
+        <td>STT</td>
+        <td>ID</td>
+        <td>Tiêu đề</td>
+        <td>Tác giả</td>
+        <td>Thể loại</td>
+    </tr>
+    </thead>
+    <tbody id="content"></tbody>
+</table>
+
+<button id="btn-more">Xem thêm</button>
+<h1>Footer</h1>
+
+<script>
+    $(document).ready(function () {
+        const pageSize = 5;
+        let blogs = [];
+        let currentIndex = 0;
+        function loadCategories() {
+            $.ajax({
+                url: "http://localhost:8080/v1/api/blogs/categories",
+                method: "get",
+                dataType: "json",
+                success: function (data) {
+                    if (data && data.length) {
+                        let options = '<option value="">------ Chọn thể loại ------</option>';
+                        data.forEach(cat => {
+                            options += `<option value="${cat.id}">${cat.name}</option>`;
+                        });
+                        $("#categoryId").html(options);
+                    }
+                },
+                error: function (xhr) {
+                    console.log("Lỗi tải danh mục:", xhr.status);
+                }
+            });
+        }
+
+        loadCategories();
+        function loadBlogs() {
+            $.ajax({
+                url: "http://localhost:8080/v1/api/blogs",
+                method: "get",
+                dataType: "json",
+                success: function (data) {
+                    blogs = data || [];
+                    currentIndex = 0;
+                    $("#content").html('');
+                    loadMore();
+                },
+                error: function (xhr) {
+                    alert("Lỗi khi tải danh sách blog: " + xhr.status);
+                }
+            });
+        }
+        function loadMore() {
+            const nextIndex = currentIndex + pageSize;
+            const slice = blogs.slice(currentIndex, nextIndex);
+
+            slice.forEach((blog, i) => {
+                $("#content").append(`
+                <tr>
+                    <td>${currentIndex + i + 1}</td>
+                    <td>${blog.id}</td>
+                    <td>${blog.title}</td>
+                    <td>${blog.author}</td>
+                    <td>${blog.category ? blog.category.name : ''}</td>
+                </tr>
+            `);
+            });
+
+            currentIndex = nextIndex;
+            if (currentIndex >= blogs.length) {
+                $("#btn-more").hide();
+            } else {
+                $("#btn-more").show();
+            }
+        }
+
+        $("#btn-more").click(loadMore);
+        $("#btn-save").click(function () {
+            let title = $("#title").val().trim();
+            let author = $("#author").val().trim();
+            let categoryId = $("#categoryId").val();
+
+            if (!title || !author || !categoryId) {
+                alert("Vui lòng điền đầy đủ thông tin!");
+                return;
+            }
+
+            let blog = { title, author, category: { id: categoryId } };
+
+            $.ajax({
+                url: "http://localhost:8080/v1/api/blogs",
+                method: "post",
+                contentType: "application/json",
+                data: JSON.stringify(blog),
+                success: function () {
+                    $("#title").val('');
+                    $("#author").val('');
+                    $("#categoryId").val('');
+                    loadBlogs();
+                },
+                error: function (xhr) {
+                    alert("Lỗi khi thêm blog: " + xhr.status);
+                }
+            });
+        });
+
+        loadBlogs();
+    });
+</script>
+</body>
+</html>
