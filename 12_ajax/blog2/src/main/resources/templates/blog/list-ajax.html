@@ -2,48 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Blog List</title>
+    <title>Blog List Ajax</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        table { width: 100%; margin-top: 20px; }
+        th, td { padding: 8px; text-align: left; }
+    </style>
 </head>
 
 <body>
-<h1>Danh sách Blog</h1>
+<h1>Danh sách Blog (Ajax Load More)</h1>
 <div>
-    <input id="title" placeholder="Nhập tiêu đề"><br>
-    <input id="author" placeholder="Nhập tác giả"><br>
+    <input id="title" placeholder="Nhập tiêu đề">
+    <input id="author" placeholder="Nhập tác giả">
 
     <select id="categoryId">
         <option value="">------ Chọn thể loại ------</option>
     </select>
-    <br>
+
     <button id="btn-save">Lưu</button>
 </div>
 
 <table border="1" style="border-collapse: collapse">
     <thead>
     <tr>
-        <td>STT</td>
-        <td>ID</td>
-        <td>Tiêu đề</td>
-        <td>Tác giả</td>
-        <td>Thể loại</td>
+        <th>ID</th>
+        <th>Tiêu đề</th>
+        <th>Tác giả</th>
+        <th>Thể loại</th>
     </tr>
     </thead>
-    <tbody id="content"></tbody>
+    <tbody id="content">
+    </tbody>
 </table>
 
-<button id="btn-more">Xem thêm</button>
+<div style="margin-top: 10px; text-align: center;">
+    <button id="btn-more" style="padding: 10px 20px; cursor: pointer;">Xem thêm</button>
+</div>
+
 <h1>Footer</h1>
 
 <script>
     $(document).ready(function () {
-        const pageSize = 5;
-        let blogs = [];
-        let currentIndex = 0;
+        let currentPage = 0;
+        const pageSize = 2;
+
+
         function loadCategories() {
             $.ajax({
-                url: "http://localhost:8080/v1/api/blogs/categories",
-                method: "get",
+                url: "http://localhost:8080/v1/api/blog/categories",
+                method: "GET",
                 dataType: "json",
                 success: function (data) {
                     if (data && data.length) {
@@ -60,48 +68,59 @@
             });
         }
 
-        loadCategories();
-        function loadBlogs() {
+
+        function loadBlogs(page) {
             $.ajax({
-                url: "http://localhost:8080/v1/api/blogs",
-                method: "get",
+
+                url: `http://localhost:8080/v1/api/blog?page=${page}&size=${pageSize}`,
+                method: "GET",
                 dataType: "json",
                 success: function (data) {
-                    blogs = data || [];
-                    currentIndex = 0;
-                    $("#content").html('');
-                    loadMore();
+
+                    const blogs = data.content;
+
+                    let html = "";
+                    blogs.forEach(blog => {
+                        html += `
+                            <tr>
+                                <td>${blog.id}</td>
+                                <td>${blog.title}</td>
+                                <td>${blog.author}</td>
+                                <td>${blog.category ? blog.category.name : 'N/A'}</td>
+                            </tr>
+                        `;
+                    });
+
+
+                    $("#content").append(html);
+
+
+                    if (data.last === true) {
+                        $("#btn-more").hide();
+                        $("#btn-more").after("<span>Đã hết dữ liệu</span>");
+                    } else {
+                        $("#btn-more").show();
+                    }
                 },
                 error: function (xhr) {
-                    alert("Lỗi khi tải danh sách blog: " + xhr.status);
+                    if (xhr.status === 204) {
+
+                        $("#btn-more").hide();
+                        $("#content").append("<tr><td colspan='4'>Không có dữ liệu</td></tr>");
+                    } else {
+                        alert("Lỗi tải dữ liệu: " + xhr.status);
+                    }
                 }
             });
         }
-        function loadMore() {
-            const nextIndex = currentIndex + pageSize;
-            const slice = blogs.slice(currentIndex, nextIndex);
 
-            slice.forEach((blog, i) => {
-                $("#content").append(`
-                <tr>
-                    <td>${currentIndex + i + 1}</td>
-                    <td>${blog.id}</td>
-                    <td>${blog.title}</td>
-                    <td>${blog.author}</td>
-                    <td>${blog.category ? blog.category.name : ''}</td>
-                </tr>
-            `);
-            });
 
-            currentIndex = nextIndex;
-            if (currentIndex >= blogs.length) {
-                $("#btn-more").hide();
-            } else {
-                $("#btn-more").show();
-            }
-        }
+        $("#btn-more").click(function () {
+            currentPage++;
+            loadBlogs(currentPage);
+        });
 
-        $("#btn-more").click(loadMore);
+
         $("#btn-save").click(function () {
             let title = $("#title").val().trim();
             let author = $("#author").val().trim();
@@ -112,18 +131,30 @@
                 return;
             }
 
-            let blog = { title, author, category: { id: categoryId } };
+            let blog = {
+                title: title,
+                author: author,
+                category: { id: categoryId }
+            };
 
             $.ajax({
-                url: "http://localhost:8080/v1/api/blogs",
-                method: "post",
+                url: "http://localhost:8080/v1/api/blog",
+                method: "POST",
                 contentType: "application/json",
                 data: JSON.stringify(blog),
-                success: function () {
+                success: function (res) {
+                    alert("Thêm mới thành công!");
+
+
                     $("#title").val('');
                     $("#author").val('');
                     $("#categoryId").val('');
-                    loadBlogs();
+
+
+                    currentPage = 0;
+                    $("#content").empty();
+                    $("span:contains('Đã hết dữ liệu')").remove();
+                    loadBlogs(currentPage);
                 },
                 error: function (xhr) {
                     alert("Lỗi khi thêm blog: " + xhr.status);
@@ -131,7 +162,9 @@
             });
         });
 
-        loadBlogs();
+
+        loadCategories();
+        loadBlogs(currentPage);
     });
 </script>
 </body>
