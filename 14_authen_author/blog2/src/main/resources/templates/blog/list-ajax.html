@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blog List Ajax</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        table { width: 100%; margin-top: 20px; }
+        th, td { padding: 8px; text-align: left; }
+    </style>
+</head>
+
+<body>
+<h1>Danh sách Blog (Ajax Load More)</h1>
+<div>
+    <input id="title" placeholder="Nhập tiêu đề">
+    <input id="author" placeholder="Nhập tác giả">
+
+    <select id="categoryId">
+        <option value="">------ Chọn thể loại ------</option>
+    </select>
+
+    <button id="btn-save">Lưu</button>
+</div>
+
+<table border="1" style="border-collapse: collapse">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Tiêu đề</th>
+        <th>Tác giả</th>
+        <th>Thể loại</th>
+    </tr>
+    </thead>
+    <tbody id="content">
+    </tbody>
+</table>
+
+<div style="margin-top: 10px; text-align: center;">
+    <button id="btn-more" style="padding: 10px 20px; cursor: pointer;">Xem thêm</button>
+</div>
+
+<h1>Footer</h1>
+
+<script>
+    $(document).ready(function () {
+        let currentPage = 0;
+        const pageSize = 2;
+
+
+        function loadCategories() {
+            $.ajax({
+                url: "http://localhost:8080/v1/api/blog/categories",
+                method: "GET",
+                dataType: "json",
+                success: function (data) {
+                    if (data && data.length) {
+                        let options = '<option value="">------ Chọn thể loại ------</option>';
+                        data.forEach(cat => {
+                            options += `<option value="${cat.id}">${cat.name}</option>`;
+                        });
+                        $("#categoryId").html(options);
+                    }
+                },
+                error: function (xhr) {
+                    console.log("Lỗi tải danh mục:", xhr.status);
+                }
+            });
+        }
+
+
+        function loadBlogs(page) {
+            $.ajax({
+
+                url: `http://localhost:8080/v1/api/blog?page=${page}&size=${pageSize}`,
+                method: "GET",
+                dataType: "json",
+                success: function (data) {
+
+                    const blogs = data.content;
+
+                    let html = "";
+                    blogs.forEach(blog => {
+                        html += `
+                            <tr>
+                                <td>${blog.id}</td>
+                                <td>${blog.title}</td>
+                                <td>${blog.author}</td>
+                                <td>${blog.category ? blog.category.name : 'N/A'}</td>
+                            </tr>
+                        `;
+                    });
+
+
+                    $("#content").append(html);
+
+
+                    if (data.last === true) {
+                        $("#btn-more").hide();
+                        $("#btn-more").after("<span>Đã hết dữ liệu</span>");
+                    } else {
+                        $("#btn-more").show();
+                    }
+                },
+                error: function (xhr) {
+                    if (xhr.status === 204) {
+
+                        $("#btn-more").hide();
+                        $("#content").append("<tr><td colspan='4'>Không có dữ liệu</td></tr>");
+                    } else {
+                        alert("Lỗi tải dữ liệu: " + xhr.status);
+                    }
+                }
+            });
+        }
+
+
+        $("#btn-more").click(function () {
+            currentPage++;
+            loadBlogs(currentPage);
+        });
+
+
+        $("#btn-save").click(function () {
+            let title = $("#title").val().trim();
+            let author = $("#author").val().trim();
+            let categoryId = $("#categoryId").val();
+
+            if (!title || !author || !categoryId) {
+                alert("Vui lòng điền đầy đủ thông tin!");
+                return;
+            }
+
+            let blog = {
+                title: title,
+                author: author,
+                category: { id: categoryId }
+            };
+
+            $.ajax({
+                url: "http://localhost:8080/v1/api/blog",
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(blog),
+                success: function (res) {
+                    alert("Thêm mới thành công!");
+
+
+                    $("#title").val('');
+                    $("#author").val('');
+                    $("#categoryId").val('');
+
+
+                    currentPage = 0;
+                    $("#content").empty();
+                    $("span:contains('Đã hết dữ liệu')").remove();
+                    loadBlogs(currentPage);
+                },
+                error: function (xhr) {
+                    alert("Lỗi khi thêm blog: " + xhr.status);
+                }
+            });
+        });
+
+
+        loadCategories();
+        loadBlogs(currentPage);
+    });
+</script>
+</body>
+</html>
